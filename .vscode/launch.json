@@ -1,0 +1,65 @@
+{
+  "compounds": [
+    {
+      "configurations": ["CHEFS API", "CHEFS Frontend"],
+      "name": "CHEFS"
+    }
+  ],
+  "configurations": [
+    {
+      "cwd": "${workspaceFolder}/app",
+      "name": "CHEFS API",
+      "outputCapture": "std",
+      "request": "launch",
+      "runtimeArgs": ["run", "serve"],
+      "runtimeExecutable": "npm",
+      "type": "node",
+      "env": {
+        "NODE_CONFIG_DIR": "${workspaceFolder}/.devcontainer/chefs_local"
+      }
+    },
+    {
+      "cwd": "${workspaceFolder}/app/frontend",
+      "env": {
+        "VITE_TITLE": "CHEFS RLS - Local",
+        "VITE_CONTACT": "submit.digital@gov.bc.ca",
+        "VITE_FRONTEND_BASEPATH": "/app",
+        "VITE_CHEFSTOURURL": "https://www.youtube.com/embed/obOhyYusMjM",
+        "VITE_HOWTOURL": "https://www.youtube.com/playlist?list=PL9CV_8JBQHirsQAShw45PZeU1CkU88Q53"
+      },
+      "name": "CHEFS Frontend",
+      "outputCapture": "std",
+      "request": "launch",
+      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "npm",
+      "type": "node"
+    },
+    {
+      "name": "CHEFS Frontend - chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173/app",
+      "enableContentValidation": false,
+      "webRoot": "${workspaceFolder}/app/frontend/src",
+      "pathMapping": { "url": "//src/", "path": "${webRoot}/" }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: current file",
+      //"env": { "NODE_ENV": "test" },
+      "program": "${workspaceFolder}/app/node_modules/.bin/jest",
+      "args": [
+        "${fileBasenameNoExtension}",
+        "--config",
+        "${workspaceFolder}/app/jest.config.js",
+        "--coverage=false"
+      ],
+      "console": "integratedTerminal",
+      "windows": {
+        "program": "${workspaceFolder}/app/node_modules/jest/bin/jest"
+      }
+    }
+  ],
+  "version": "0.2.0"
+}
