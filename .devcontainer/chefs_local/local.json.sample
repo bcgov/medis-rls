@@ -56,7 +56,9 @@
           "windowMs": "900000",
           "max": "100"
         }
-      }
+      },
+      "webhookSecret": "ba1259dd-9b08-4016-8043-b3bc946ec81b",
+      "externalApiKey": "494d9bef-6ab5-4ebe-8690-f41aaa2767ab"
     },
     "serviceClient": {
       "commonServices": {
@@ -90,4 +92,3 @@
       }
     }
   }
-  
