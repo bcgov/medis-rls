@@ -21,7 +21,7 @@
     {
       "cwd": "${workspaceFolder}/app/frontend",
       "env": {
-        "VITE_TITLE": "CHEFS RLS - Local",
+        "VITE_TITLE": "Ministry of Health - RLS POC",
         "VITE_CONTACT": "submit.digital@gov.bc.ca",
         "VITE_FRONTEND_BASEPATH": "/app",
         "VITE_CHEFSTOURURL": "https://www.youtube.com/embed/obOhyYusMjM",

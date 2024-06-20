@@ -136,6 +136,7 @@ class Form extends Timestamps(Model) {
       'ministry',
       'apiIntegration',
       'useCase',
+      'remote',
     ];
   }
 
@@ -165,6 +166,7 @@ class Form extends Timestamps(Model) {
         ministry: { type: 'string', minLength: 1, maxLength: 25 },
         apiIntegration: { type: 'boolean' },
         useCase: { type: 'string', minLength: 1, maxLength: 25 },
+        remote: { type: 'boolean' },
         ...stamps,
       },
       additionalProperties: false,

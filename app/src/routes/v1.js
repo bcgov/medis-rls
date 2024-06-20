@@ -5,6 +5,7 @@ const router = require('express').Router();
 const yaml = require('js-yaml');
 
 const webhooks = require('../forms/webhooks');
+const rls = require('../forms/rls');
 const admin = require('../forms/admin');
 const bcgeoaddress = require('../forms/bcgeoaddress');
 const file = require('../forms/file');
@@ -29,6 +30,7 @@ const submissionPath = submission.mount(router);
 const utilsPath = utils.mount(router);
 const publicPath = index.mount(router);
 const webhooksPath = webhooks.mount(router);
+const rlsPath = rls.mount(router);
 
 const getSpec = () => {
   const rawSpec = fs.readFileSync(path.join(__dirname, '../docs/v1.api-spec.yaml'), 'utf8');
@@ -41,7 +43,7 @@ const getSpec = () => {
 // Base v1 Responder
 router.get('/', (_req, res) => {
   res.status(200).json({
-    endpoints: ['/docs', filePath, formPath, permissionPath, rbacPath, rolePath, submissionPath, userPath, bcaddress, publicPath, utilsPath, webhooksPath],
+    endpoints: ['/docs', filePath, formPath, permissionPath, rbacPath, rolePath, submissionPath, userPath, bcaddress, publicPath, utilsPath, webhooksPath, rlsPath],
   });
 });
 

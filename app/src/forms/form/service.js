@@ -22,9 +22,12 @@ const {
   SubmissionMetadata,
   FormComponentsProactiveHelp,
   FormSubscription,
+  FormRls,
 } = require('../common/models');
 const { falsey, queryUtils, checkIsFormExpired, validateScheduleObject, typeUtils } = require('../common/utils');
 const { Permissions, Roles, Statuses } = require('../common/constants');
+// const { hasFormRoles } = require('../auth/middleware/userAccess');
+// const R = require('../common/constants').Roles;
 const Rolenames = [Roles.OWNER, Roles.TEAM_MANAGER, Roles.FORM_DESIGNER, Roles.SUBMISSION_REVIEWER, Roles.FORM_SUBMITTER, Roles.SUBMISSION_APPROVER];
 
 const service = {
@@ -346,7 +349,7 @@ const service = {
     return DocumentTemplate.query().findById(documentTemplateId).modify('filterActive', true).throwIfNotFound();
   },
 
-  listFormSubmissions: async (formId, params) => {
+  listFormSubmissions: async (formId, params, currentUser) => {
     const query = SubmissionMetadata.query()
       .where('formId', formId)
       .modify('filterSubmissionId', params.submissionId)
@@ -358,6 +361,13 @@ const service = {
       .modify('filterVersion', params.version)
       .modify('filterformSubmissionStatusCode', params.filterformSubmissionStatusCode)
       .modify('orderDefault', params.sortBy && params.page ? true : false, params);
+
+    // getting rls for this form and user who is calling api
+    const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
+    const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
+    if (isRls) {
+      query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
+    }
 
     if (params.createdAt && Array.isArray(params.createdAt) && params.createdAt.length === 2) {
       query.modify('filterCreatedAt', params.createdAt[0], params.createdAt[1]);
@@ -374,8 +384,14 @@ const service = {
         selection.push('updatedBy');
       }
       if (Array.isArray(params.fields)) {
+        if (isRls && !params.fields.includes(rls.field)) {
+          params.fields.push(rls.field);
+        }
         fields = params.fields.flatMap((f) => f.split(',').map((s) => s.trim()));
       } else {
+        if (isRls && params.fields.search(rls.field) === -1) {
+          params.fields.concat(`,${rls.field}`);
+        }
         fields = params.fields.split(',').map((s) => s.trim());
       }
 
@@ -390,9 +406,13 @@ const service = {
         fields.map((f) => ref(`submission:data.${f}`).as(f.split('.').slice(-1)))
       );
     } else {
+      const noFields = ['lateEntry'];
+      if (isRls) {
+        noFields.push(rls.field);
+      }
       query.select(
         selection,
-        ['lateEntry'].map((f) => ref(`submission:data.${f}`).as(f.split('.').slice(-1)))
+        noFields.map((f) => ref(`submission:data.${f}`).as(f.split('.').slice(-1)))
       );
     }
 

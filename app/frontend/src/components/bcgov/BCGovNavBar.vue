@@ -14,7 +14,7 @@ defineProps({
 
 const idpStore = useIdpStore();
 
-const { authenticated, isAdmin, identityProvider } = storeToRefs(
+const { authenticated, /*isAdmin,*/ identityProvider } = storeToRefs(
   useAuthStore()
 );
 const { lang } = storeToRefs(useFormStore());
@@ -31,14 +31,14 @@ const hasPrivileges = computed(() => {
   >
     <div class="nav-holder">
       <ul>
-        <li>
+        <!-- <li>
           <router-link
             data-cy="aboutLinks"
             :to="{ name: 'About' }"
             :lang="lang"
             >{{ $t('trans.bCGovNavBar.about') }}</router-link
           >
-        </li>
+        </li> -->
         <li v-if="authenticated">
           <router-link
             data-cy="userFormsLinks"
@@ -47,7 +47,7 @@ const hasPrivileges = computed(() => {
             >{{ $t('trans.bCGovNavBar.myForms') }}</router-link
           >
         </li>
-        <li v-if="hasPrivileges">
+        <li v-if="hasPrivileges && false">
           <router-link
             data-cy="createNewForm"
             :to="{ name: 'FormCreate' }"
@@ -55,7 +55,7 @@ const hasPrivileges = computed(() => {
             >{{ $t('trans.bCGovNavBar.createNewForm') }}</router-link
           >
         </li>
-        <li v-if="hasPrivileges">
+        <!-- <li v-if="hasPrivileges">
           <a
             data-cy="help"
             href="https://github.com/bcgov/common-hosted-form-service/wiki"
@@ -72,15 +72,15 @@ const hasPrivileges = computed(() => {
             :hreflang="lang"
             >{{ $t('trans.bCGovNavBar.feedback') }}</a
           >
-        </li>
+        </li> -->
         <!-- <li>
           <router-link :to="{ name: 'User' }">User (TBD)</router-link>
         </li> -->
-        <li v-if="isAdmin">
+        <!-- <li v-if="isAdmin">
           <router-link data-cy="admin" :to="{ name: 'Admin' }" :lang="lang">{{
             $t('trans.bCGovNavBar.admin')
           }}</router-link>
-        </li>
+        </li> -->
       </ul>
     </div>
   </nav>

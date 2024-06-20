@@ -76,8 +76,15 @@ const service = {
     let user = await User.query().first().where('idpUserId', obj.idpUserId);
 
     if (!user) {
-      // add to the system.
-      user = await service.createUser(obj);
+      // let's check if user was created by event webhook (user placeholder)
+      const ifUserPlaceholder = await User.query().modify('filterUsername', obj.username).modify('filterIdpCode', obj.idpCode).first();
+      if (ifUserPlaceholder) {
+        // if user placeholder exist update User recods with the rest fields
+        user = await service.updateUser(ifUserPlaceholder.id, obj);
+      } else {
+        // add to the system.
+        user = await service.createUser(obj);
+      }
     } else {
       // what if name or email changed?
       user = await service.updateUser(user.id, obj);
@@ -161,6 +168,7 @@ const service = {
       versionUpdatedAt: item.versionUpdatedAt,
       roles: item.roles,
       permissions: item.permissions,
+      remote: item.remote,
     };
   },
 

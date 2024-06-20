@@ -6,3 +6,4 @@ export { default as roleService } from './roleService';
 export { default as userService } from './userService';
 export { default as fileService } from './fileService';
 export { default as utilsService } from './utilsService';
+export { default as rlsService } from './rlsService';

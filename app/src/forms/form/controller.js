@@ -161,7 +161,7 @@ module.exports = {
       if (!validate(formId)) {
         res.status(400).json({ detail: `Bad formId "${formId}".` });
       } else {
-        const response = await service.listFormSubmissions(formId, req.query);
+        const response = await service.listFormSubmissions(formId, req.query, req.currentUser);
         res.status(200).json(response);
       }
     } catch (error) {

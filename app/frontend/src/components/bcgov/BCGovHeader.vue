@@ -68,7 +68,10 @@ const { isRTL } = storeToRefs(useFormStore());
       </h1>
       <v-spacer />
       <BaseAuthButton data-test="base-auth-btn" />
-      <BaseInternationalization data-test="base-internationalization" />
+      <BaseInternationalization
+        v-if="false"
+        data-test="base-internationalization"
+      />
     </v-toolbar>
   </header>
 </template>

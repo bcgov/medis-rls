@@ -172,7 +172,7 @@ export default {
     </template>
     <template #item.actions="{ item }">
       <router-link
-        v-if="checkFormManage(item.permissions)"
+        v-if="checkFormManage(item.permissions) && !item.remote"
         :to="{ name: 'FormManage', query: { f: item.id } }"
       >
         <v-btn color="primary" variant="text" size="small">
@@ -180,6 +180,18 @@ export default {
           <span class="d-none d-sm-flex" :lang="lang">{{
             $t('trans.formsTable.manage')
           }}</span>
+        </v-btn>
+      </router-link>
+      <router-link
+        v-if="checkFormManage(item.permissions)"
+        :to="{ name: 'FormTeams', query: { f: item.id } }"
+      >
+        <v-btn color="primary" variant="text" size="small">
+          <v-icon
+            :class="isRTL ? 'ml-1' : 'mr-1'"
+            icon="mdi:mdi-table-row-height"
+          ></v-icon>
+          <span class="d-none d-sm-flex" :lang="lang">RLS</span>
         </v-btn>
       </router-link>
       <router-link

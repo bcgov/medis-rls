@@ -2,10 +2,11 @@
 import { mapActions, mapState } from 'pinia';
 
 import BaseDialog from '~/components/base/BaseDialog.vue';
+import BaseRls from '~/components/base/BaseRls.vue';
 import BaseFilter from '~/components/base/BaseFilter.vue';
 import AddTeamMember from '~/components/forms/manage/AddTeamMember.vue';
 import { i18n } from '~/internationalization';
-import { rbacService, roleService } from '~/services';
+import { rbacService, roleService, rlsService } from '~/services';
 import { useAuthStore } from '~/store/auth';
 import { useFormStore } from '~/store/form';
 import { useIdpStore } from '~/store/identityProviders';
@@ -14,6 +15,7 @@ import {
   FormPermissions,
   FormRoleCodes,
   IdentityMode,
+  NotificationTypes,
 } from '~/utils/constants';
 
 export default {
@@ -21,6 +23,7 @@ export default {
     BaseDialog,
     BaseFilter,
     AddTeamMember,
+    BaseRls,
   },
   props: {
     formId: {
@@ -45,13 +48,27 @@ export default {
       selectedUsers: [],
       showColumnsDialog: false,
       showDeleteDialog: false,
+      showRLSDialog: false,
+      savingRls: false,
+      deletingRls: false,
+      rlsUsers: [],
+      itemsToRls: [],
+      rlsExist: false,
+      rlsLoading: false,
       tableData: [],
       updating: false,
     };
   },
   computed: {
     ...mapState(useAuthStore, ['user']),
-    ...mapState(useFormStore, ['form', 'permissions', 'isRTL', 'lang']),
+    ...mapState(useFormStore, [
+      'form',
+      'formList',
+      'formFields',
+      'permissions',
+      'isRTL',
+      'lang',
+    ]),
     ...mapState(useIdpStore, ['listRoles']),
     canManageTeam() {
       return this.permissions.includes(FormPermissions.TEAM_UPDATE);
@@ -93,7 +110,7 @@ export default {
                 : -1
             )
         )
-        .concat({ title: '', key: 'actions', width: '1rem', sortable: false });
+        .concat({ title: '', key: 'actions', width: '6rem', sortable: false });
     },
     FILTER_HEADERS() {
       return this.DEFAULT_HEADERS.filter(
@@ -121,7 +138,11 @@ export default {
     this.loadItems();
   },
   methods: {
-    ...mapActions(useFormStore, ['fetchForm', 'getFormPermissionsForUser']),
+    ...mapActions(useFormStore, [
+      'fetchForm',
+      'fetchFormFields',
+      'getFormPermissionsForUser',
+    ]),
     ...mapActions(useNotificationStore, ['addNotification']),
     ...mapActions(useIdpStore, ['findByCode']),
     async loadItems() {
@@ -131,6 +152,7 @@ export default {
         await this.fetchForm(this.formId),
         await this.getFormPermissionsForUser(this.formId),
         await this.getRolesList(),
+        await this.getFormFields(),
         await this.getFormUsers(),
       ]);
 
@@ -174,7 +196,103 @@ export default {
         });
         this.formUsers = [];
       } finally {
+        await this.getRlsUsers();
         this.createTableData(); // Force refresh table based on latest API response
+      }
+    },
+
+    async getFormFields() {
+      const currentFormVersion = this.form?.versions.filter(
+        (v) => v.published === true
+      )[0];
+      await this.fetchFormFields({
+        formId: this.formId,
+        formVersionId: currentFormVersion?.id,
+      });
+    },
+
+    async getRlsUsers() {
+      try {
+        if (!this.canManageTeam) {
+          throw new Error(
+            this.$t('trans.teamManagement.insufficientPermissnMsg')
+          );
+        }
+        this.rlsLoading = true;
+        const rlsUsersResponse = await rlsService.getRlsUsers(this.formId);
+        rlsUsersResponse?.data?.map((rls) => {
+          this.rlsUsers[rls.userId] = {
+            id: rls.id,
+            formId: rls.formId,
+            field: rls.field,
+            value: rls.value,
+          };
+          return true;
+        });
+      } catch (error) {
+        this.addNotification({
+          text: error.message,
+          consoleError: error,
+        });
+        this.formUsers = [];
+      } finally {
+        this.formUsers = this.formUsers?.map((fu) => {
+          return { ...fu, rls: this.rlsUsers[fu.userId] || null };
+        });
+        this.rlsLoading = false;
+      }
+    },
+
+    async saveRls(payload) {
+      try {
+        this.savingRls = true;
+        const rlsUsers = this.itemsToRls.map((u) => {
+          return { id: u.id };
+        });
+        const rlsPayload = Object.assign({ users: rlsUsers }, payload);
+        await rlsService.setRlsForms(rlsPayload, { formId: this.formId });
+      } catch (error) {
+        this.savingRls = false;
+        this.addNotification({
+          text: error.message,
+          consoleError: error,
+        });
+      } finally {
+        this.savingRls = false;
+        this.showRLSDialog = false;
+        this.addNotification({
+          text: 'RLS has been successfully assigned',
+          ...NotificationTypes.SUCCESS,
+        });
+
+        // refresh the table and rls stuff
+        await this.getRlsUsers();
+        this.createTableData();
+      }
+    },
+
+    async deleteRls() {
+      try {
+        this.deletingRls = true;
+        const rlsIdsToDelete = this.itemsToRls.map((u) => u?.rls?.id);
+        await rlsService.deleteRlsUsers(this.formId, rlsIdsToDelete);
+      } catch (error) {
+        this.deletingRls = false;
+        this.addNotification({
+          text: error.message,
+          consoleError: error,
+        });
+      } finally {
+        this.deletingRls = false;
+        this.showRLSDialog = false;
+        this.addNotification({
+          text: 'RLS has been successfully deleted',
+          ...NotificationTypes.SUCCESS,
+        });
+
+        // refresh the table and rls stuff
+        await this.getRlsUsers();
+        this.createTableData();
       }
     },
 
@@ -187,6 +305,8 @@ export default {
           userId: user.userId,
           username: user.username,
           identityProvider: user.idp,
+          remote: user.remote,
+          rls: user.rls || null,
         };
         this.roleList
           .map((role) => role.code)
@@ -339,6 +459,17 @@ export default {
       this.showDeleteDialog = true;
     },
 
+    onRLSClick(item = null) {
+      if (item) {
+        this.itemsToRls = [];
+        this.itemsToRls = Array.isArray(item)
+          ? this.tableData.filter((td) => item.includes(td.id))
+          : [item];
+      }
+      this.rlsExist = this.itemsToRls[0] && this.itemsToRls[0].rls !== null;
+      this.showRLSDialog = true;
+    },
+
     userError() {
       this.addNotification({
         text: i18n.t('trans.teamManagement.formOwnerRemovalWarning'),
@@ -422,7 +553,7 @@ export default {
               $t('trans.teamManagement.selectColumns')
             }}</span>
           </v-tooltip>
-          <v-tooltip location="bottom">
+          <v-tooltip v-if="!form.remote" location="bottom">
             <template #activator="{ props }">
               <router-link :to="{ name: 'FormManage', query: { f: formId } }">
                 <v-btn
@@ -544,6 +675,26 @@ export default {
             <v-btn
               icon
               v-bind="props"
+              :disabled="updating || selectedUsers.length < 1 || rlsLoading"
+              size="24"
+              color="primary"
+              :style="{ marginRight: '3px' }"
+              @click="onRLSClick(selectedUsers)"
+            >
+              <v-icon
+                size="16"
+                color="white"
+                icon="mdi:mdi-table-row-height"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span :lang="lang">RLS</span>
+        </v-tooltip>
+        <v-tooltip location="bottom">
+          <template #activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
               :disabled="updating || selectedUsers.length < 1"
               size="24"
               color="red"
@@ -627,6 +778,26 @@ export default {
             <v-btn
               icon
               v-bind="props"
+              :disabled="updating || rlsLoading"
+              size="24"
+              color="primary"
+              :style="{ marginRight: '3px' }"
+              @click="onRLSClick(item)"
+            >
+              <v-icon
+                size="16"
+                color="white"
+                icon="mdi:mdi-table-row-height"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span :lang="lang">RLS</span>
+        </v-tooltip>
+        <v-tooltip location="bottom">
+          <template #activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
               :disabled="updating"
               size="24"
               color="red"
@@ -664,6 +835,25 @@ export default {
         <span :lang="lang">{{ $t('trans.teamManagement.remove') }}</span>
       </template>
     </BaseDialog>
+
+    <BaseRls
+      v-model="showRLSDialog"
+      :forms="formList"
+      :items-to-rls="itemsToRls"
+      :saving-rls="savingRls"
+      :deleting-rls="deletingRls"
+      :current-form-fields="formFields"
+      :current-form-id="formId"
+      :rls-exist="rlsExist"
+      @close-dialog="showRLSDialog = false"
+      @continue-dialog="saveRls"
+      @delete-rls="deleteRls"
+    >
+      <template #title><span :lang="lang">RLS assignment</span></template>
+      <template #button-text-continue>
+        <span :lang="lang">Save</span>
+      </template>
+    </BaseRls>
 
     <v-dialog v-model="showColumnsDialog" width="700">
       <BaseFilter

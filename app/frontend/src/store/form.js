@@ -144,6 +144,7 @@ export const useFormStore = defineStore('form', {
           description: f.formDescription,
           permissions: f.permissions,
           published: f.published,
+          remote: f.remote,
         }));
         this.formList = forms;
       } catch (error) {
@@ -639,6 +640,8 @@ export const useFormStore = defineStore('form', {
       sortBy: sortBy,
       search: search,
       searchEnabled: searchEnabled,
+      formFields = false,
+      noRls = false,
     }) {
       try {
         this.submissionList = [];
@@ -646,7 +649,7 @@ export const useFormStore = defineStore('form', {
         const fields =
           this.userFormPreferences && this.userFormPreferences.preferences
             ? this.userFormPreferences.preferences.columns
-            : undefined;
+            : formFields;
         const response = userView
           ? await rbacService.getUserSubmissions({
               formId: formId,
@@ -664,6 +667,7 @@ export const useFormStore = defineStore('form', {
               sortBy: sortBy,
               search: search,
               searchEnabled: searchEnabled,
+              noRls: noRls,
             });
         if (paginationEnabled) {
           this.submissionList = response.data.results;

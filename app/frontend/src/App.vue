@@ -54,7 +54,7 @@ defineExpose({
           <component :is="Component" :class="isWidePage" />
         </transition>
       </RouterView>
-      <BCGovFooter :form-submit-mode="isFormSubmitMode" />
+      <BCGovFooter v-if="false" :form-submit-mode="isFormSubmitMode" />
     </v-main>
   </v-layout>
 </template>
