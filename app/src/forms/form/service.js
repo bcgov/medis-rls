@@ -365,8 +365,11 @@ const service = {
     // getting rls for this form and user who is calling api
     const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
     const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
-    if (isRls) {
+    const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
+    if (isRls && !isNestedPath) {
       query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
+    } else if (isRls && isNestedPath) {
+      query.whereRaw(`submission #>> '{data,${rls.nestedPath}}' = '${rls.value}'`);
     }
 
     if (params.createdAt && Array.isArray(params.createdAt) && params.createdAt.length === 2) {

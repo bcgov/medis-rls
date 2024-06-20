@@ -64,24 +64,11 @@ const currentField = ref(null);
 const currentNestedField = ref(null);
 const localNestedFields = ref([]);
 const localNestedFlattenedObj = ref({});
-// const rlsFormId = ref(null);
-// const rlsField = ref(null);
 const rlsValue = ref(null);
 const editing = ref(false);
 const isNestedObject = ref(false);
+const nestedPath = ref(null);
 const localValues = ref([]);
-
-// const formRules = ref([
-//   (v) => {
-//     return !!v || 'Please, select the form';
-//   },
-// ]);
-
-// const fieldRules = ref([
-//   (v) => {
-//     return !!v || 'Please, select the field name';
-//   },
-// ]);
 
 const currentFieldRules = ref([
   (v) => {
@@ -106,29 +93,6 @@ const formStore = useFormStore();
 const { isRTL, lang, formFields, submissionList } = storeToRefs(useFormStore());
 
 const RTL = computed(() => (isRTL.value ? 'ml-5' : 'mr-5'));
-
-// const localUserForms = computed(() => {
-//   return props.forms.map((f) => {
-//     return { text: f.name, id: f.id };
-//   });
-// });
-
-// const localFieldNames = computed(() => {
-//   return formFields.value.map((f) => {
-//     return { text: f, id: f };
-//   });
-// });
-
-// const localValues = computed(() => {
-//   const values = submissionList.value.map((s) => {
-//     return s[rlsField.value];
-//   });
-//   // remove duplicated values
-//   const uniqueValues = [...new Set(values)];
-//   return uniqueValues.map((v) => {
-//     return { text: v, id: v };
-//   });
-// });
 
 watch(submissionList, async (newSubmissionList) => {
   if (newSubmissionList && newSubmissionList.length > 0) {
@@ -178,23 +142,12 @@ watch(currentField, async (newValue) => {
   }
 });
 
-// watch(rlsFormId, async (newValue) => {
-//   if (newValue) {
-//     rlsField.value = null;
-//     rlsValue.value = null;
-//     const currentForm = props.forms.filter((f) => f.id === newValue)[0];
-//     await formStore.fetchFormFields({
-//       formId: currentForm.id,
-//       formVersionId: currentForm.currentVersionId,
-//     });
-//   }
-// });
-
 watch(currentNestedField, async (newNestedField) => {
   if (newNestedField) {
     rlsValue.value = null;
     localValues.value = [];
     const tempLocalValues = [];
+    console.log(localNestedFlattenedObj.value);
     Object.keys(localNestedFlattenedObj.value).map((f) => {
       if (f.includes(currentNestedField.value)) {
         tempLocalValues.push(localNestedFlattenedObj.value[f]);
@@ -210,6 +163,22 @@ watch(currentNestedField, async (newNestedField) => {
         });
       }
     });
+  }
+});
+
+watch(rlsValue, async (newValue) => {
+  if (newValue && isNestedObject.value) {
+    Object.keys(localNestedFlattenedObj.value).map((path) => {
+      if (
+        localNestedFlattenedObj.value[path] === newValue &&
+        path.split(/\.\d*\./).pop() === currentNestedField.value
+      ) {
+        nestedPath.value = path
+          .replace(/^\d*\./, `${currentField.value},`)
+          .replaceAll('.', ',');
+      }
+    });
+    console.log(nestedPath.value);
   }
 });
 
@@ -232,6 +201,7 @@ function continueDialog() {
     id: props.itemsToRls[0]?.rls?.id,
     field: isNestedObject.value ? currentNestedField.value : currentField.value,
     value: rlsValue.value,
+    nestedPath: nestedPath.value,
     editing: editing.value,
   });
   resetValues();
@@ -248,8 +218,7 @@ function deleteRls() {
 
 function resetValues() {
   currentField.value = null;
-  // rlsFormId.value = null;
-  // rlsField.value = null;
+  currentNestedField.value = null;
   rlsValue.value = null;
   editing.value = false;
 }
@@ -307,42 +276,6 @@ defineExpose({ RTL });
               item-value="id"
             ></v-autocomplete>
           </div>
-
-          <!-- <div
-            v-if="
-              (currentField && !isNestedObject) ||
-              (currentNestedField && isNestedObject)
-            "
-          >
-            <v-card-subtitle>
-              Select the source form where the field/value pair for filtering is
-              from
-            </v-card-subtitle>
-            <v-autocomplete
-              v-model="rlsFormId"
-              :rules="formRules"
-              label="Form Name"
-              :items="localUserForms"
-              item-title="text"
-              item-value="id"
-            ></v-autocomplete>
-          </div>
-
-          <div
-            v-if="rlsFormId && localFieldNames && localFieldNames.length > 0"
-          >
-            <v-card-subtitle
-              >Select field name to get values from</v-card-subtitle
-            >
-            <v-autocomplete
-              v-model="rlsField"
-              :rules="fieldRules"
-              label="Values Field Name"
-              :items="localFieldNames"
-              item-title="text"
-              item-value="id"
-            ></v-autocomplete>
-          </div> -->
 
           <div v-if="localValues && localValues.length > 0">
             <v-card-subtitle>Select the value for mapping</v-card-subtitle>

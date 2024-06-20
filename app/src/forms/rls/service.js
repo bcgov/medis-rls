@@ -12,7 +12,17 @@ const service = {
       trx = await FormRls.startTransaction();
 
       for (const user of data.users) {
-        const obj = Object.assign({}, { formId: formId, userId: user.id, field: data.field, value: data.value, createdBy: currentUser.usernameIdp });
+        const obj = Object.assign(
+          {},
+          {
+            formId: formId,
+            userId: user.id,
+            field: data.field,
+            value: data.value,
+            nestedPath: data.nestedPath,
+            createdBy: currentUser.usernameIdp,
+          }
+        );
         obj.id = uuidv4();
 
         await FormRls.query(trx).insert(obj);
@@ -32,7 +42,16 @@ const service = {
 
       for (const user of data.users) {
         const obj = await service.read(user.id, formId);
-        const update = Object.assign({}, { formId: formId, field: data.field, value: data.value, updatedBy: currentUser.usernameIdp });
+        const update = Object.assign(
+          {},
+          {
+            formId: formId,
+            field: data.field,
+            value: data.value,
+            nestedPath: data.nestedPath,
+            updatedBy: currentUser.usernameIdp,
+          }
+        );
 
         await FormRls.query(trx).patchAndFetchById(obj.id, update);
       }
