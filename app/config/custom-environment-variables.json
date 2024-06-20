@@ -53,7 +53,9 @@
     },
     "logFile": "SERVER_LOGFILE",
     "logLevel": "SERVER_LOGLEVEL",
-    "port": "SERVER_PORT"
+    "port": "SERVER_PORT",
+    "webhoookSecret": "WEBHOOK_SECRET",
+    "externalApiKey": "EXTERNAL_API_KEY"
   },
   "serviceClient": {
     "commonServices": {
