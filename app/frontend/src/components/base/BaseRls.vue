@@ -147,7 +147,6 @@ watch(currentNestedField, async (newNestedField) => {
     rlsValue.value = null;
     localValues.value = [];
     const tempLocalValues = [];
-    console.log(localNestedFlattenedObj.value);
     Object.keys(localNestedFlattenedObj.value).map((f) => {
       if (f.includes(currentNestedField.value)) {
         tempLocalValues.push(localNestedFlattenedObj.value[f]);
@@ -178,7 +177,6 @@ watch(rlsValue, async (newValue) => {
           .replaceAll('.', ',');
       }
     });
-    console.log(nestedPath.value);
   }
 });
 

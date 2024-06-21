@@ -7,10 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       pr-number:
-        description: Pull request number
+        description: Pull request number, leave blank for dev/test/prod deployment
         required: false
         type: string
-
+      environment:
+        description: Environment name; choose dev for PR
+        required: true
+        type: choice
+        options:
+        - dev
+        - test
+        - prod
+        default: dev
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.pr-number || github.ref }}
   cancel-in-progress: true

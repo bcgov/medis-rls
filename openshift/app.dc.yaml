@@ -3,27 +3,27 @@ apiVersion: template.openshift.io/v1
 kind: Template
 labels:
   app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "${APP_NAME}-${JOB_NAME}"
+  app.kubernetes.io/instance: "pcd-rls-dev"
   app.kubernetes.io/managed-by: kubectl
   app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "${APP_NAME}-${JOB_NAME}"
-  app: "${APP_NAME}-${JOB_NAME}"
-  template: "${REPO_NAME}-app-dc-template"
+  app.kubernetes.io/part-of: "pcd-rls-dev"
+  app: "pcd-rls-dev"
+  template: "pcd-rls-app-dc-template"
 metadata:
-  name: "${REPO_NAME}-app-dc"
+  name: "pcd-rls-app-dc"
 objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-${APP_NAME}-app-${JOB_NAME}-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${REPO_NAME}-app-${JOB_NAME}-to-patroni-${JOB_NAME}-cluster"
     spec:
       # Allow app to talk to Patroni cluster
       ingress:
         - from:
             - podSelector:
                 matchLabels:
-                  app: "${APP_NAME}-${JOB_NAME}"
-                  deploymentconfig: "${APP_NAME}-app-${JOB_NAME}"
+                  app: "${REPO_NAME}-${JOB_NAME}"
+                  deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
                   role: app
           ports:
             - port: 5432
@@ -36,7 +36,7 @@ objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-pre-hook-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${REPO_NAME}-pre-hook-to-patroni-${JOB_NAME}-cluster"
     spec:
       # Allow app pre-hook pods to talk to Patroni cluster
       ingress:
@@ -57,13 +57,13 @@ objects:
     metadata:
       annotations:
         app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"StatefulSet","name":"patroni-${JOB_NAME}"}]'
-      name: "${APP_NAME}-app-${JOB_NAME}"
+      name: "${REPO_NAME}-app-${JOB_NAME}"
     spec:
       replicas: ${{REPLICAS}}
       revisionHistoryLimit: 10
       selector:
-        app: "${APP_NAME}-${JOB_NAME}"
-        deploymentconfig: "${APP_NAME}-app-${JOB_NAME}"
+        app: "${REPO_NAME}-${JOB_NAME}"
+        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
         role: app
       strategy:
         type: Rolling
@@ -84,7 +84,7 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-db-name
+                      key: app-rls-db-name
                       name: "patroni-${JOB_NAME}-secret"
                 - name: DB_HOST
                   value: "patroni-${JOB_NAME}"
@@ -103,8 +103,8 @@ objects:
       template:
         metadata:
           labels:
-            app: "${APP_NAME}-${JOB_NAME}"
-            deploymentconfig: "${APP_NAME}-app-${JOB_NAME}"
+            app: "${REPO_NAME}-${JOB_NAME}"
+            deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
             role: app
         spec:
           containers:
@@ -143,7 +143,7 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-db-name
+                      key: app-rls-db-name
                       name: "patroni-${JOB_NAME}-secret"
                 - name: DB_HOST
                   value: "patroni-${JOB_NAME}"
@@ -165,7 +165,7 @@ objects:
                   valueFrom:
                     secretKeyRef:
                       key: email
-                      name: "${APP_NAME}-contact-secret"
+                      name: "${REPO_NAME}-contact-secret"
 
                 - name: VITE_HOWTOURL
                   valueFrom:
@@ -194,16 +194,6 @@ objects:
                       name: "${APP_NAME}-bcgeoaddress-secret"
                 - name: SERVER_BASEPATH
                   value: "${ROUTE_PATH}"
-                - name: SERVER_KC_CLIENTID
-                  valueFrom:
-                    secretKeyRef:
-                      key: username
-                      name: "${APP_NAME}-keycloak-secret"
-                - name: SERVER_KC_CLIENTSECRET
-                  valueFrom:
-                    secretKeyRef:
-                      key: password
-                      name: "${APP_NAME}-keycloak-secret"
                 - name: SC_CS_CHES_CLIENT_ID
                   valueFrom:
                     secretKeyRef:
@@ -239,21 +229,31 @@ objects:
                     secretKeyRef:
                       key: mailapitoken
                       name: "chefs-${JOB_NAME}-secret"
+                - name: WEBHOOK_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      key: webhooksecret
+                      name: "${REPO_NAME}-secret"
+                - name: EXTERNAL_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: externalapikey
+                      name: "${REPO_NAME}-secret"
                 # - name: SERVER_LOGFILE
                 #   value: "/var/log/app.log"
               envFrom:
                 - configMapRef:
-                    name: "${APP_NAME}-frontend-config"
+                    name: "${REPO_NAME}-frontend-config"
                 - configMapRef:
                     name: "${APP_NAME}-sc-config"
                 - configMapRef:
-                    name: "${APP_NAME}-server-config"
+                    name: "${REPO_NAME}-server-config"
                 - configMapRef:
-                    name: "${APP_NAME}-service-config"
+                    name: "${REPO_NAME}-service-config"
                 - configMapRef:
                     name: "${APP_NAME}-files-config"
                 - configMapRef:
-                    name: "${APP_NAME}-oidc-config"
+                    name: "${REPO_NAME}-oidc-config"
                 - configMapRef:
                     name: "${APP_NAME}-custombcaddressformiocomponent-config"
           restartPolicy: Always
@@ -276,7 +276,7 @@ objects:
   - apiVersion: v1
     kind: Service
     metadata:
-      name: "${APP_NAME}-app-${JOB_NAME}"
+      name: "${REPO_NAME}-app-${JOB_NAME}"
     spec:
       ports:
         - name: 8080-tcp
@@ -284,35 +284,14 @@ objects:
           protocol: TCP
           targetPort: 8080
       selector:
-        app: "${APP_NAME}-${JOB_NAME}"
-        deploymentconfig: "${APP_NAME}-app-${JOB_NAME}"
+        app: "${REPO_NAME}-${JOB_NAME}"
+        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
         role: app
       sessionAffinity: None
-  - apiVersion: v1
-    kind: Route
-    metadata:
-      name: "${APP_NAME}-app-${JOB_NAME}"
-    spec:
-      host: "${ROUTE_HOST}"
-      path: "${ROUTE_PATH}"
-      port:
-        targetPort: 8080-tcp
-      tls:
-        insecureEdgeTerminationPolicy: Redirect
-        termination: edge
-      to:
-        kind: Service
-        name: "${APP_NAME}-app-${JOB_NAME}"
-        weight: 100
-      wildcardPolicy: None
 parameters:
   - name: APP_NAME
     description: Application name
     displayName: Application name
-    required: true
-  - name: ROUTE_HOST
-    description: The host the route will use to expose service outside cluster
-    displayName: Route host
     required: true
   - name: ROUTE_PATH
     description: Configure the route path (ex. /pr-5 or /app), also used for VITE_FRONTEND_BASEPATH
@@ -336,7 +315,7 @@ parameters:
     description: The specific image tag to deploy
     displayName: Docker Image Tag
     required: true
-    value: latest
+    value: dev
   - name: NAMESPACE
     description: Target namespace reference (i.e. 'wfezkf-dev')
     displayName: Target Namespace
@@ -345,6 +324,7 @@ parameters:
     description: Application repository name
     displayName: Repository Name
     required: true
+    value: pcd-rls
   - name: CPU_LIMIT
     description: Limit Peak CPU per pod (in millicores ex. 1000m)
     displayName: CPU Limit
