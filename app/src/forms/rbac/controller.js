@@ -1,3 +1,4 @@
+const getLogger = require('../../components/log');
 const emailService = require('../email/emailService');
 const formService = require('../submission/service');
 const service = require('./service');
@@ -49,6 +50,8 @@ module.exports = {
       delete response.deletedForms;
       res.status(200).json(response);
     } catch (error) {
+      const logger = getLogger();
+      logger.log('Error getting current user', error);
       next(error);
     }
   },
