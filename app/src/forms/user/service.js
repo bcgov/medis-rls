@@ -22,6 +22,10 @@ const service = {
     return User.query().findById(userId).throwIfNotFound();
   },
 
+  readByIdpUserId: (idpUserId) => {
+    return User.query().modify('filterIdpUserId', idpUserId).first();
+  },
+
   readSafe: (userId) => {
     return User.query().modify('safeSelect').findById(userId).throwIfNotFound();
   },
