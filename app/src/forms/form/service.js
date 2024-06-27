@@ -28,6 +28,8 @@ const { falsey, queryUtils, checkIsFormExpired, validateScheduleObject, typeUtil
 const { Permissions, Roles, Statuses } = require('../common/constants');
 // const { hasFormRoles } = require('../auth/middleware/userAccess');
 // const R = require('../common/constants').Roles;
+const { flatten, unflatten } = require('uni-flatten');
+// const _ = require('lodash');
 const Rolenames = [Roles.OWNER, Roles.TEAM_MANAGER, Roles.FORM_DESIGNER, Roles.SUBMISSION_REVIEWER, Roles.FORM_SUBMITTER, Roles.SUBMISSION_APPROVER];
 
 const service = {
@@ -349,7 +351,17 @@ const service = {
     return DocumentTemplate.query().findById(documentTemplateId).modify('filterActive', true).throwIfNotFound();
   },
 
-  listFormSubmissions: async (formId, params, currentUser) => {
+  listFormSubmissions: async (formId, params, currentUser, remoteCall = false) => {
+    // getting rls for this form and user who is calling api
+    // TODO - select by remote form id
+    // const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
+    const rls = await FormRls.query().modify('filterUserId', currentUser?.id).first();
+    const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
+    const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
+    if (remoteCall) {
+      formId = rls?.formId;
+    }
+
     const query = SubmissionMetadata.query()
       .where('formId', formId)
       .modify('filterSubmissionId', params.submissionId)
@@ -362,10 +374,6 @@ const service = {
       .modify('filterformSubmissionStatusCode', params.filterformSubmissionStatusCode)
       .modify('orderDefault', params.sortBy && params.page ? true : false, params);
 
-    // getting rls for this form and user who is calling api
-    const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
-    const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
-    const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
     if (isRls && !isNestedPath) {
       query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
     } else if (isRls && isNestedPath) {
@@ -412,6 +420,9 @@ const service = {
       const noFields = ['lateEntry'];
       if (isRls) {
         noFields.push(rls.field);
+        if (isNestedPath) {
+          noFields.push(rls.nestedPath.split(',')[0]);
+        }
       }
       query.select(
         selection,
@@ -420,13 +431,62 @@ const service = {
     }
 
     if (params.paginationEnabled) {
-      return await service.processPaginationData(query, parseInt(params.page), parseInt(params.itemsPerPage), params.totalSubmissions, params.search, params.searchEnabled);
+      return await service.processPaginationData(
+        query,
+        parseInt(params.page),
+        parseInt(params.itemsPerPage),
+        params.totalSubmissions,
+        params.search,
+        params.searchEnabled,
+        isRls,
+        isNestedPath,
+        rls
+      );
     }
 
+    const res = await query;
+    if (isRls && isNestedPath) {
+      return service.getNestedRlsResult(res, rls.nestedPath);
+    }
     return query;
   },
 
-  async processPaginationData(query, page, itemsPerPage, totalSubmissions, search, searchEnabled) {
+  getNestedRlsResult(result, nestedPath) {
+    if (result && Object.prototype.hasOwnProperty.call(result, 'results')) {
+      result.results = result.results.map((r) => {
+        return service.getPicked(r, nestedPath);
+      });
+      return result;
+    } else {
+      return result.map((r) => {
+        return service.getPicked(r, nestedPath);
+      });
+    }
+  },
+
+  getPicked(res, nestedPath) {
+    const origPath = nestedPath.split(',');
+    const newNestedPath = nestedPath.split(',');
+    if (newNestedPath.length > 3) {
+      newNestedPath.pop();
+    }
+    const flattenObj = flatten(res[origPath[0]]);
+    newNestedPath.shift();
+    const newPath = newNestedPath.join(',');
+    let q = [];
+    Object.keys(flattenObj).map((fk) => {
+      const newFk = fk.replace(/^\[/, '').replaceAll('[', ',').replaceAll('].', ',');
+      q.push(newFk.split(',').length === 2 && newFk.split(',')[0] === newPath.split(',')[0]);
+      if (!newFk.includes(newPath) && !(newFk.split(',').length === 2 && newFk.split(',')[0] === newPath.split(',')[0])) {
+        delete flattenObj[fk];
+      }
+    });
+    res[origPath[0]] = unflatten(flattenObj);
+    res[origPath[0]] = res[origPath[0]].filter((v) => v !== null);
+    return res;
+  },
+
+  async processPaginationData(query, page, itemsPerPage, totalSubmissions, search, searchEnabled, isRls, isNestedPath, rls) {
     let isSearchAble = typeUtils.isBoolean(searchEnabled) ? searchEnabled : searchEnabled !== undefined ? JSON.parse(searchEnabled) : false;
     if (isSearchAble) {
       let submissionsData = await query;
@@ -471,7 +531,11 @@ const service = {
       if (itemsPerPage && parseInt(itemsPerPage) === -1) {
         return await query.page(parseInt(page), parseInt(totalSubmissions || 0));
       } else if (itemsPerPage && parseInt(page) >= 0) {
-        return await query.page(parseInt(page), parseInt(itemsPerPage));
+        const res = await query.page(parseInt(page), parseInt(itemsPerPage));
+        if (isRls && isNestedPath) {
+          return service.getNestedRlsResult(res, rls.nestedPath);
+        }
+        return res;
       }
     }
   },
