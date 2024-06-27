@@ -133,6 +133,7 @@ watch(submissionList, async (newSubmissionList) => {
 watch(currentField, async (newValue) => {
   if (newValue) {
     currentNestedField.value = null;
+    nestedPath.value = null;
     let criteria = {
       formId: props.currentFormId,
       formFields: currentField.value,

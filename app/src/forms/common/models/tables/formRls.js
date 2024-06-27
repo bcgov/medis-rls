@@ -33,7 +33,7 @@ class FormRls extends Timestamps(Model) {
         formId: { type: 'string', pattern: Regex.UUID },
         field: { type: 'string', maxLength: 255 },
         value: { type: 'string', maxLength: 255 },
-        nestedPath: { type: 'string', maxLength: 1000 },
+        nestedPath: { type: ['string', 'null'], maxLength: 1000 },
         remoteFormId: { type: 'string', pattern: Regex.UUID },
         remoteFormName: { type: 'string', maxLength: 1000 },
         ...stamps,

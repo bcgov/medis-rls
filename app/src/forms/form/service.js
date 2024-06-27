@@ -482,7 +482,9 @@ const service = {
       }
     });
     res[origPath[0]] = unflatten(flattenObj);
-    res[origPath[0]] = res[origPath[0]].filter((v) => v !== null);
+    if (res[origPath[0]] && res[origPath[0]].length > 0) {
+      res[origPath[0]] = res[origPath[0]].filter((v) => v !== null);
+    }
     return res;
   },
 
