@@ -41,6 +41,10 @@ const props = defineProps({
     default: false,
     type: Boolean,
   },
+  customViewName: {
+    default: null,
+    type: String,
+  },
   forms: {
     default: () => [],
     type: Array,
@@ -48,6 +52,10 @@ const props = defineProps({
   itemsToRls: {
     default: () => [],
     type: Array,
+  },
+  customViewData: {
+    default: () => {},
+    type: Object,
   },
 });
 
@@ -94,6 +102,30 @@ const { isRTL, lang, formFields, submissionList } = storeToRefs(useFormStore());
 
 const RTL = computed(() => (isRTL.value ? 'ml-5' : 'mr-5'));
 
+const isCustomViewData = computed(
+  () =>
+    props.currentFormFields &&
+    props.currentFormFields.length === 0 &&
+    props.customViewData &&
+    props.customViewData.fields &&
+    props.customViewData.fields.length > 0
+);
+
+const initRlsFields = computed(() => {
+  let humanWords = [];
+  if (isCustomViewData.value) {
+    humanWords = transformStrings(props.customViewData?.fields);
+    return props.customViewData?.fields?.map((f, i) => {
+      return { title: humanWords[i], value: f };
+    });
+  } else {
+    humanWords = transformStrings(props.currentFormFields);
+    return props.currentFormFields.map((f, i) => {
+      return { title: humanWords[i], value: f };
+    });
+  }
+});
+
 watch(submissionList, async (newSubmissionList) => {
   if (newSubmissionList && newSubmissionList.length > 0) {
     localValues.value = [];
@@ -113,7 +145,7 @@ watch(submissionList, async (newSubmissionList) => {
       const uniqueValues = [...new Set(parsedValues)];
       uniqueValues.sort();
       localNestedFields.value = uniqueValues.map((v) => {
-        return { text: v, id: v };
+        return { title: v, value: v };
       });
     } else {
       // get here if field value is String type
@@ -122,8 +154,12 @@ watch(submissionList, async (newSubmissionList) => {
       const uniqueValues = [...new Set(values)];
       uniqueValues.sort();
       uniqueValues.map((lv) => {
-        if (typeof lv === 'string' || lv instanceof String) {
-          localValues.value.push({ text: lv, id: lv });
+        if (
+          (typeof lv === 'string' || lv instanceof String) &&
+          lv !== '' &&
+          lv !== null
+        ) {
+          localValues.value.push({ title: lv, value: lv });
         }
       });
     }
@@ -134,12 +170,29 @@ watch(currentField, async (newValue) => {
   if (newValue) {
     currentNestedField.value = null;
     nestedPath.value = null;
-    let criteria = {
-      formId: props.currentFormId,
-      formFields: currentField.value,
-      noRls: true,
-    };
-    await formStore.fetchSubmissions(criteria);
+    if (isCustomViewData.value) {
+      localValues.value = [];
+      const tempValues = props.customViewData?.data.map((v) => v[newValue]);
+      // remove duplicated values
+      const uniqueValues = [...new Set(tempValues)];
+      uniqueValues.sort();
+      uniqueValues.map((lv) => {
+        if (
+          (typeof lv === 'string' || lv instanceof String) &&
+          lv !== '' &&
+          lv !== null
+        ) {
+          localValues.value.push({ title: lv, value: lv });
+        }
+      });
+    } else {
+      let criteria = {
+        formId: props.currentFormId,
+        formFields: currentField.value,
+        noRls: true,
+      };
+      await formStore.fetchSubmissions(criteria);
+    }
   }
 });
 
@@ -158,8 +211,8 @@ watch(currentNestedField, async (newNestedField) => {
     uniqueValues.map((lv) => {
       if (typeof lv === 'string' || lv instanceof String) {
         localValues.value.push({
-          text: lv,
-          id: lv,
+          title: lv,
+          value: lv,
         });
       }
     });
@@ -181,6 +234,18 @@ watch(rlsValue, async (newValue) => {
   }
 });
 
+function transformStrings(array) {
+  return array.map((str) => {
+    // Convert camelCase to space delimited
+    let spaced = str.replace(/([a-z])([A-Z])/g, '$1 $2');
+    // Convert underscore to space
+    spaced = spaced.replace(/_/g, ' ');
+    // Capitalize each word
+    spaced = spaced.replace(/\b\w/g, (char) => char.toUpperCase());
+    return spaced;
+  });
+}
+
 function parseNested(obj) {
   const flattenedObj = flatten(obj);
   localNestedFlattenedObj.value = flattenedObj;
@@ -201,6 +266,7 @@ function continueDialog() {
     field: isNestedObject.value ? currentNestedField.value : currentField.value,
     value: rlsValue.value,
     nestedPath: nestedPath.value,
+    customViewName: props.customViewName,
     editing: editing.value,
   });
   resetValues();
@@ -220,6 +286,7 @@ function resetValues() {
   currentNestedField.value = null;
   rlsValue.value = null;
   editing.value = false;
+  localValues.value = [];
 }
 
 defineExpose({ RTL });
@@ -256,9 +323,7 @@ defineExpose({ RTL });
             v-model="currentField"
             :rules="currentFieldRules"
             label="RLS Field Name"
-            :items="currentFormFields"
-            item-title="text"
-            item-value="id"
+            :items="initRlsFields"
           ></v-autocomplete>
 
           <div v-if="currentField && isNestedObject">
@@ -271,8 +336,6 @@ defineExpose({ RTL });
               :rules="currentFieldRules"
               label="Nested Field Name"
               :items="localNestedFields"
-              item-title="text"
-              item-value="id"
             ></v-autocomplete>
           </div>
 
@@ -283,8 +346,6 @@ defineExpose({ RTL });
               :rules="valueRules"
               label="Value"
               :items="localValues"
-              item-title="text"
-              item-value="id"
             ></v-autocomplete>
           </div>
         </div>

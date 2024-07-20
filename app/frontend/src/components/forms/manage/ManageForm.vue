@@ -4,6 +4,7 @@ import { mapActions, mapState } from 'pinia';
 import ApiKey from '~/components/forms/manage/ApiKey.vue';
 import DocumentTemplate from '~/components/forms/manage/DocumentTemplate.vue';
 import FormSettings from '~/components/designer/FormSettings.vue';
+import FormRls from '~/components/designer/FormRls.vue';
 import ManageVersions from '~/components/forms/manage/ManageVersions.vue';
 import Subscription from '~/components/forms/manage/Subscription.vue';
 import { useFormStore } from '~/store/form';
@@ -19,14 +20,17 @@ export default {
     ManageVersions,
     Subscription,
     FormProfile,
+    FormRls,
   },
   data() {
     return {
       apiKeyPanel: 1,
       cdogsPanel: 1,
       formSettingsDisabled: true,
+      formRlsDisabled: true,
       settingsFormValid: false,
       settingsPanel: 1,
+      rlsPanel: 1,
       versionsPanel: 0,
       subscriptionsPanel: 0,
       subscription: false,
@@ -103,9 +107,20 @@ export default {
       this.fetchForm(this.form.id);
     },
 
+    cancelRlsEdit() {
+      this.rlsPanel = 1;
+      this.formRlsDisabled = true;
+      this.fetchForm(this.form.id);
+    },
+
     enableSettingsEdit() {
       this.settingsPanel = 0;
       this.formSettingsDisabled = false;
+    },
+
+    enableRlsEdit() {
+      this.rlsPanel = 0;
+      this.formRlsDisabled = false;
     },
 
     async updateSettings() {
@@ -115,6 +130,7 @@ export default {
         if (valid) {
           await this.updateForm();
           this.formSettingsDisabled = true;
+          this.formRlsDisabled = true;
           this.addNotification({
             text: 'Your form settings have been updated successfully.',
             ...NotificationTypes.SUCCESS,
@@ -137,6 +153,57 @@ export default {
 
 <template>
   <div :class="{ 'dir-rtl': isRTL }" class="mt-2">
+    <v-expansion-panels
+      v-if="canEditForm"
+      v-model="rlsPanel"
+      class="nrmc-expand-collapse"
+    >
+      <v-expansion-panel flat>
+        <!-- Form RLS Settings -->
+        <v-expansion-panel-title>
+          <div class="header" :lang="lang">
+            <strong>RLS Settings</strong>
+            <span :lang="lang">
+              <v-btn
+                v-if="canEditForm"
+                size="x-small"
+                variant="text"
+                icon
+                color="primary"
+                style="font-size: 14px"
+                @click.stop="enableRlsEdit"
+              >
+                <v-icon icon="mdi:mdi-pencil"></v-icon>
+              </v-btn>
+            </span>
+          </div>
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-form
+            ref="settingsForm"
+            v-model="settingsFormValid"
+            :disabled="formRlsDisabled"
+            lazy-validation
+          >
+            <FormRls :disabled="formRlsDisabled" />
+          </v-form>
+
+          <div v-if="canEditForm && !formRlsDisabled" class="mb-5">
+            <v-btn
+              :class="isRTL ? 'ml-5' : 'mr-5'"
+              color="primary"
+              @click="updateSettings"
+            >
+              <span :lang="lang">{{ $t('trans.manageForm.update') }}</span>
+            </v-btn>
+            <v-btn variant="outlined" @click="cancelRlsEdit">
+              <span :lang="lang">{{ $t('trans.manageForm.cancel') }}</span>
+            </v-btn>
+          </div>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+
     <v-expansion-panels
       v-if="canEditForm"
       v-model="settingsPanel"

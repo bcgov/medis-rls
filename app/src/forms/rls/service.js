@@ -20,6 +20,7 @@ const service = {
             field: data.field,
             value: data.value,
             nestedPath: data.nestedPath,
+            customViewName: data.customViewName,
             createdBy: currentUser.usernameIdp,
           }
         );
@@ -49,6 +50,7 @@ const service = {
             field: data.field,
             value: data.value,
             nestedPath: data.nestedPath,
+            customViewName: data.customViewName,
             updatedBy: currentUser.usernameIdp,
           }
         );

@@ -99,6 +99,7 @@ export const useFormStore = defineStore('form', {
     fcProactiveHelpImageUrl: '',
     form: genInitialForm(),
     formFields: [],
+    formCustomViewData: [],
     formSubmission: {
       confirmationId: '',
       originalName: '',
@@ -360,6 +361,18 @@ export const useFormStore = defineStore('form', {
         });
       }
     },
+    async fetchFormCustomView({ formId, viewName }) {
+      try {
+        const { data } = await formService.listCustomViewData(formId, viewName);
+        this.formCustomViewData = data;
+      } catch (error) {
+        const notificationStore = useNotificationStore();
+        notificationStore.addNotification({
+          text: 'Error occured while fetching the Custom View Data',
+          consoleError: { formId, error },
+        });
+      }
+    },
     async publishDraft({ formId, draftId }) {
       try {
         await formService.publishDraft(formId, draftId);
@@ -445,6 +458,7 @@ export const useFormStore = defineStore('form', {
           enableCopyExistingSubmission: this.form.enableCopyExistingSubmission
             ? this.form.enableCopyExistingSubmission
             : false,
+          custom_view_name: this.form.custom_view_name,
         });
 
         // update user labels with any new added labels

@@ -65,6 +65,7 @@ export default {
       'form',
       'formList',
       'formFields',
+      'formCustomViewData',
       'permissions',
       'isRTL',
       'lang',
@@ -141,6 +142,7 @@ export default {
     ...mapActions(useFormStore, [
       'fetchForm',
       'fetchFormFields',
+      'fetchFormCustomView',
       'getFormPermissionsForUser',
     ]),
     ...mapActions(useNotificationStore, ['addNotification']),
@@ -152,7 +154,9 @@ export default {
         await this.fetchForm(this.formId),
         await this.getFormPermissionsForUser(this.formId),
         await this.getRolesList(),
-        await this.getFormFields(),
+        this.form.custom_view_name
+          ? await this.getFormCustomView(this.form.custom_view_name)
+          : await this.getFormFields(),
         await this.getFormUsers(),
       ]);
 
@@ -211,6 +215,13 @@ export default {
       });
     },
 
+    async getFormCustomView(viewName) {
+      await this.fetchFormCustomView({
+        formId: this.formId,
+        viewName: viewName,
+      });
+    },
+
     async getRlsUsers() {
       try {
         if (!this.canManageTeam) {
@@ -219,6 +230,7 @@ export default {
           );
         }
         this.rlsLoading = true;
+        this.rlsUsers = [];
         const rlsUsersResponse = await rlsService.getRlsUsers(this.formId);
         rlsUsersResponse?.data?.map((rls) => {
           this.rlsUsers[rls.userId] = {
@@ -254,8 +266,8 @@ export default {
       } catch (error) {
         this.savingRls = false;
         this.addNotification({
-          text: error.message,
-          consoleError: error,
+          text: 'Something went wrong while saving RLS',
+          ...NotificationTypes.ERROR,
         });
       } finally {
         this.savingRls = false;
@@ -845,6 +857,8 @@ export default {
       :current-form-fields="formFields"
       :current-form-id="formId"
       :rls-exist="rlsExist"
+      :custom-view-name="form.custom_view_name"
+      :custom-view-data="formCustomViewData"
       @close-dialog="showRLSDialog = false"
       @continue-dialog="saveRls"
       @delete-rls="deleteRls"

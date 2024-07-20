@@ -1,3 +1,5 @@
+const DataConnection = require('../../db/dataConnection');
+const dataConnection = new DataConnection();
 const Problem = require('api-problem');
 const { ref } = require('objection');
 const { v4: uuidv4 } = require('uuid');
@@ -178,6 +180,7 @@ const service = {
         ministry: data.ministry,
         apiIntegration: data.apiIntegration,
         useCase: data.useCase,
+        custom_view_name: data.custom_view_name,
       };
 
       await Form.query(trx).patchAndFetchById(formId, upd);
@@ -351,6 +354,17 @@ const service = {
     return DocumentTemplate.query().findById(documentTemplateId).modify('filterActive', true).throwIfNotFound();
   },
 
+  listFormCustomViewData: async (formId, viewName, fieldName = null, fieldValue = null) => {
+    let data = [];
+    if (fieldName && fieldValue) {
+      data = await dataConnection.knex.raw(`select * from ${viewName} where "formId" = '${formId}' and ${fieldName} = '${fieldValue}'`);
+    } else {
+      data = await dataConnection.knex.raw(`select * from ${viewName} where "formId" = '${formId}'`);
+    }
+    const fields = data?.fields?.filter((f) => f.name !== 'formId').map((f) => f.name);
+    return { fields: fields, data: data.rows };
+  },
+
   listFormSubmissions: async (formId, params, currentUser, remoteCall = false) => {
     // getting rls for this form and user who is calling api
     // TODO - select by remote form id
@@ -360,6 +374,10 @@ const service = {
     const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
     if (remoteCall) {
       formId = rls?.formId;
+    }
+
+    if (isRls && rls.customViewName) {
+      return await service.listFormCustomViewData(formId, rls.customViewName, rls.field, rls.value);
     }
 
     const query = SubmissionMetadata.query()
