@@ -79,7 +79,7 @@ routes.get('/:formId/submissions', rateLimiter, apiAccess, hasFormPermissions([P
   await controller.listFormSubmissions(req, res, next);
 });
 
-routes.get('/:formId/:viewName', hasFormPermissions([P.FORM_READ, P.SUBMISSION_READ]), async (req, res, next) => {
+routes.get('/:formId/view/:viewName', hasFormPermissions([P.FORM_READ, P.SUBMISSION_READ]), async (req, res, next) => {
   await controller.listFormCustomViewData(req, res, next);
 });
 

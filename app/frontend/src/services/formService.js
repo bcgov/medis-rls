@@ -397,7 +397,7 @@ export default {
    * @returns {Promise} An axios response
    */
   listCustomViewData(formId, viewName) {
-    return appAxios().get(`${ApiRoutes.FORMS}/${formId}/${viewName}`);
+    return appAxios().get(`${ApiRoutes.FORMS}/${formId}/view/${viewName}`);
   },
 
   /**
