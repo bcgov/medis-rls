@@ -1,8 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia';
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useFormStore } from '~/store/form';
-import { flatten } from 'flat';
 
 const props = defineProps({
   modelValue: {
@@ -22,7 +21,7 @@ const props = defineProps({
     type: Boolean,
   },
   width: {
-    default: '500',
+    default: '800',
     type: String,
   },
   enableCustomButton: {
@@ -54,7 +53,7 @@ const props = defineProps({
     type: Array,
   },
   customViewData: {
-    default: () => {},
+    default: () => ({}),
     type: Object,
   },
 });
@@ -68,14 +67,6 @@ const emit = defineEmits([
   'delete-rls',
 ]);
 
-const currentField = ref(null);
-const currentNestedField = ref(null);
-const localNestedFields = ref([]);
-const localNestedFlattenedObj = ref({});
-const rlsValue = ref(null);
-const editing = ref(false);
-const isNestedObject = ref(false);
-const nestedPath = ref(null);
 const localValues = ref([]);
 
 const currentFieldRules = ref([
@@ -91,14 +82,11 @@ const valueRules = ref([
 ]);
 
 onMounted(() => {
-  formFields.value = [];
   submissionList.value = [];
-  resetValues();
 });
 
 const formStore = useFormStore();
-
-const { isRTL, lang, formFields, submissionList } = storeToRefs(useFormStore());
+const { isRTL, lang, submissionList } = storeToRefs(useFormStore());
 
 const RTL = computed(() => (isRTL.value ? 'ml-5' : 'mr-5'));
 
@@ -126,167 +114,102 @@ const initRlsFields = computed(() => {
   }
 });
 
-watch(submissionList, async (newSubmissionList) => {
-  if (newSubmissionList && newSubmissionList.length > 0) {
-    localValues.value = [];
-    localNestedFields.value = [];
-    const values = newSubmissionList.map((s) => {
-      return s[currentField.value];
-    });
-    // check if chosen field value is nested object or not
-    if (
-      values &&
-      values.length > 0 &&
-      (Array.isArray(values[0]) || typeof values[0] === 'object')
-    ) {
-      isNestedObject.value = true;
-      const parsedValues = parseNested(values);
-      // remove duplicated values
-      const uniqueValues = [...new Set(parsedValues)];
-      uniqueValues.sort();
-      localNestedFields.value = uniqueValues.map((v) => {
-        return { title: v, value: v };
-      });
-    } else {
-      // get here if field value is String type
-      isNestedObject.value = false;
-      // remove duplicated values
-      const uniqueValues = [...new Set(values)];
-      uniqueValues.sort();
-      uniqueValues.map((lv) => {
-        if (
-          (typeof lv === 'string' || lv instanceof String) &&
-          lv !== '' &&
-          lv !== null
-        ) {
-          localValues.value.push({ title: lv, value: lv });
+const localItemsToRls = computed(() => {
+  if (
+    Array.isArray(props.itemsToRls[0]?.rls) &&
+    props.itemsToRls[0]?.rls.length > 0
+  ) {
+    props.itemsToRls[0]?.rls.map((rls, index) => {
+      if (isCustomViewData.value) {
+        const tempValues = props.customViewData?.data.map((v) => v[rls.field]);
+        const uniqueValues = [...new Set(tempValues)];
+        uniqueValues.sort();
+        if (!localValues.value[index]) {
+          localValues.value[index] = [];
         }
-      });
-    }
+        uniqueValues.map((lv) => {
+          if (
+            lv !== '' &&
+            lv !== null &&
+            (typeof lv === 'string' || lv instanceof String)
+          ) {
+            localValues.value[index].push({ title: lv, value: lv });
+          }
+        });
+      }
+      // else {
+      //   const criteria = {
+      //     formId: props.currentFormId,
+      //     formFields: rls.field,
+      //     noRls: true,
+      //   };
+      //   await formStore.fetchSubmissions(criteria);
+      // }
+    });
   }
+  return props.itemsToRls[0]?.rls;
 });
 
-watch(currentField, async (newValue) => {
-  if (newValue) {
-    currentNestedField.value = null;
-    nestedPath.value = null;
+const onFieldUpdate = async (index) => {
+  if (localItemsToRls.value[index].field) {
+    localItemsToRls.value[index].value = null;
+    localValues.value[index] = [];
     if (isCustomViewData.value) {
-      localValues.value = [];
-      const tempValues = props.customViewData?.data.map((v) => v[newValue]);
-      // remove duplicated values
+      const tempValues = props.customViewData?.data.map(
+        (v) => v[localItemsToRls.value[index].field]
+      );
       const uniqueValues = [...new Set(tempValues)];
       uniqueValues.sort();
       uniqueValues.map((lv) => {
-        if (
-          (typeof lv === 'string' || lv instanceof String) &&
-          lv !== '' &&
-          lv !== null
-        ) {
-          localValues.value.push({ title: lv, value: lv });
+        if (typeof lv === 'string' || lv instanceof String) {
+          localValues.value[index].push({ title: lv, value: lv });
         }
       });
     } else {
-      let criteria = {
+      const criteria = {
         formId: props.currentFormId,
-        formFields: currentField.value,
+        formFields: localItemsToRls.value[index].field,
         noRls: true,
       };
       await formStore.fetchSubmissions(criteria);
     }
   }
-});
-
-watch(currentNestedField, async (newNestedField) => {
-  if (newNestedField) {
-    rlsValue.value = null;
-    localValues.value = [];
-    const tempLocalValues = [];
-    Object.keys(localNestedFlattenedObj.value).map((f) => {
-      if (f.includes(currentNestedField.value)) {
-        tempLocalValues.push(localNestedFlattenedObj.value[f]);
-      }
-    });
-    const uniqueValues = [...new Set(tempLocalValues)];
-    uniqueValues.sort();
-    uniqueValues.map((lv) => {
-      if (typeof lv === 'string' || lv instanceof String) {
-        localValues.value.push({
-          title: lv,
-          value: lv,
-        });
-      }
-    });
-  }
-});
-
-watch(rlsValue, async (newValue) => {
-  if (newValue && isNestedObject.value) {
-    Object.keys(localNestedFlattenedObj.value).map((path) => {
-      if (
-        localNestedFlattenedObj.value[path] === newValue &&
-        path.split(/\.\d*\./).pop() === currentNestedField.value
-      ) {
-        nestedPath.value = path
-          .replace(/^\d*\./, `${currentField.value},`)
-          .replaceAll('.', ',');
-      }
-    });
-  }
-});
+};
 
 function transformStrings(array) {
   return array.map((str) => {
-    // Convert camelCase to space delimited
     let spaced = str.replace(/([a-z])([A-Z])/g, '$1 $2');
-    // Convert underscore to space
     spaced = spaced.replace(/_/g, ' ');
-    // Capitalize each word
     spaced = spaced.replace(/\b\w/g, (char) => char.toUpperCase());
     return spaced;
   });
 }
 
-function parseNested(obj) {
-  const flattenedObj = flatten(obj);
-  localNestedFlattenedObj.value = flattenedObj;
-  const splitted = Object.keys(flattenedObj).map((f) =>
-    f.split(/\.\d*\./).pop()
-  );
-  return splitted;
+function addNewItem() {
+  localItemsToRls.value.push({
+    id: null,
+    formId: localItemsToRls.value[0]?.formId,
+    remoteFormId: null,
+    field: null,
+    value: null,
+  });
 }
 
 function closeDialog() {
   emit('close-dialog');
-  resetValues();
 }
 
 function continueDialog() {
   emit('continue-dialog', {
-    id: props.itemsToRls[0]?.rls?.id,
-    field: isNestedObject.value ? currentNestedField.value : currentField.value,
-    value: rlsValue.value,
-    nestedPath: nestedPath.value,
+    rlsItems: localItemsToRls.value,
     customViewName: props.customViewName,
-    editing: editing.value,
+    updating: props.rlsExist,
   });
-  resetValues();
 }
 
-function updateRls() {
-  editing.value = true;
-}
-
-function deleteRls() {
-  emit('delete-rls');
-  resetValues();
-}
-
-function resetValues() {
-  currentField.value = null;
-  currentNestedField.value = null;
-  rlsValue.value = null;
-  editing.value = false;
-  localValues.value = [];
+function deleteRls(index) {
+  //emit('delete-rls', index);
+  localItemsToRls.value.splice(index, 1);
 }
 
 defineExpose({ RTL });
@@ -311,60 +234,70 @@ defineExpose({ RTL });
             @click="closeDialog"
           ></v-icon>
         </div>
-        <div v-if="!rlsExist || editing">
+        <div>
           <v-card-title class primary-title>
-            <slot name="title"></slot>
-          </v-card-title>
-
-          <v-card-subtitle
-            >Select current form field name for filtering</v-card-subtitle
-          >
-          <v-autocomplete
-            v-model="currentField"
-            :rules="currentFieldRules"
-            label="RLS Field Name"
-            :items="initRlsFields"
-          ></v-autocomplete>
-
-          <div v-if="currentField && isNestedObject">
-            <v-card-subtitle
-              ><u>NOTE:</u> This field value is a nested object</v-card-subtitle
-            >
-            <v-card-subtitle>Choose a sub-field from bellow</v-card-subtitle>
-            <v-autocomplete
-              v-model="currentNestedField"
-              :rules="currentFieldRules"
-              label="Nested Field Name"
-              :items="localNestedFields"
-            ></v-autocomplete>
-          </div>
-
-          <div v-if="localValues && localValues.length > 0">
-            <v-card-subtitle>Select the value for mapping</v-card-subtitle>
-            <v-autocomplete
-              v-model="rlsValue"
-              :rules="valueRules"
-              label="Value"
-              :items="localValues"
-            ></v-autocomplete>
-          </div>
-        </div>
-        <div v-else>
-          <v-card-title>
             RLS for user {{ itemsToRls[0].fullName }}
           </v-card-title>
-          <v-list lines="two">
-            <v-list-item title="Field" :subtitle="itemsToRls[0].rls.field" />
-            <v-list-item title="Value" :subtitle="itemsToRls[0].rls.value" />
-          </v-list>
+          <v-row v-for="(rls, index) in localItemsToRls" :key="index">
+            <v-col cols="5">
+              <v-card-subtitle
+                >Select current form field name for filtering</v-card-subtitle
+              >
+              <v-select
+                v-model="rls.field"
+                :rules="currentFieldRules"
+                label="RLS Field Name"
+                :items="initRlsFields"
+                @update:modelValue="onFieldUpdate(index)"
+              ></v-select>
+            </v-col>
+            <v-col cols="5">
+              <v-card-subtitle>Select the value for mapping</v-card-subtitle>
+              <v-select
+                v-model="rls.value"
+                :rules="valueRules"
+                label="Value"
+                :items="localValues[index]"
+              ></v-select>
+            </v-col>
+            <v-col cols="2" class="v-card-actions justify-center">
+              <v-btn
+                v-if="rlsExist"
+                icon
+                size="24"
+                :disabled="
+                  deletingRls ||
+                  (localItemsToRls && localItemsToRls.length === 1)
+                "
+                :loading="deletingRls"
+                color="red"
+                @click="deleteRls(index)"
+              >
+                <v-icon
+                  size="16"
+                  color="white"
+                  icon="mdi:mdi-trash-can"
+                ></v-icon>
+              </v-btn>
+            </v-col>
+          </v-row>
         </div>
+        <v-card-actions class="justify-left">
+          <v-btn
+            class="mb-5 mr-5"
+            color="primary"
+            variant="flat"
+            @click="addNewItem"
+          >
+            <span>Add New Item</span>
+          </v-btn>
+        </v-card-actions>
       </div>
       <v-card-actions class="justify-center">
         <v-btn
-          v-if="!rlsExist || editing"
           class="mb-5 mr-5"
           :class="RTL"
-          :disabled="savingRls || !currentField || !rlsValue"
+          :disabled="savingRls"
           :loading="savingRls"
           color="primary"
           variant="flat"
@@ -373,25 +306,6 @@ defineExpose({ RTL });
           <slot name="button-text-continue">
             <span :lang="lang">{{ $t('trans.baseDialog.continue') }}</span>
           </slot>
-        </v-btn>
-        <v-btn
-          v-if="rlsExist && !editing"
-          class="mb-5"
-          variant="outlined"
-          @click="updateRls"
-        >
-          Update
-        </v-btn>
-        <v-btn
-          v-if="rlsExist && !editing"
-          class="mb-5"
-          :disabled="deletingRls"
-          :loading="deletingRls"
-          color="red"
-          variant="flat"
-          @click="deleteRls"
-        >
-          Delete
         </v-btn>
         <v-btn
           data-test="saveddelete-btn-cancel"
@@ -424,5 +338,8 @@ defineExpose({ RTL });
 }
 .dialog-body {
   padding: 20px;
+}
+.justify-right {
+  justify-content: right !important;
 }
 </style>

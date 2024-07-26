@@ -233,12 +233,16 @@ export default {
         this.rlsUsers = [];
         const rlsUsersResponse = await rlsService.getRlsUsers(this.formId);
         rlsUsersResponse?.data?.map((rls) => {
-          this.rlsUsers[rls.userId] = {
+          if (!this.rlsUsers[rls.userId]) {
+            this.rlsUsers[rls.userId] = [];
+          }
+          this.rlsUsers[rls.userId].push({
             id: rls.id,
             formId: rls.formId,
             field: rls.field,
             value: rls.value,
-          };
+            remoteFormId: rls.remoteFormId,
+          });
           return true;
         });
       } catch (error) {

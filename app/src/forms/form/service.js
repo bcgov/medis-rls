@@ -354,30 +354,49 @@ const service = {
     return DocumentTemplate.query().findById(documentTemplateId).modify('filterActive', true).throwIfNotFound();
   },
 
-  listFormCustomViewData: async (formId, viewName, fieldName = null, fieldValue = null) => {
-    let data = [];
-    if (fieldName && fieldValue) {
-      data = await dataConnection.knex.raw(`select * from ${viewName} where "formId" = '${formId}' and ${fieldName} = '${fieldValue}'`);
-    } else {
-      data = await dataConnection.knex.raw(`select * from ${viewName} where "formId" = '${formId}'`);
+  listFormCustomViewData: async (formId, viewName, rls = null) => {
+    const query = dataConnection.knex.select('*').from(viewName).where('formId', formId);
+    let rlsRes = [];
+    if (rls && rls.length > 0) {
+      query.andWhere(function () {
+        this.where(function () {
+          rls.forEach(({ field, value }, index) => {
+            if (index === 0) {
+              this.where(field, value);
+            } else {
+              this.orWhere(field, value);
+            }
+          });
+        });
+      });
+      rls.map((r) => {
+        rlsRes.push({ field: r.field, value: r.value });
+        return true;
+      });
     }
-    const fields = data?.fields?.filter((f) => f.name !== 'formId').map((f) => f.name);
-    return { fields: fields, data: data.rows };
+    const data = await query;
+    let fields = [];
+    if (data && data.length > 0) {
+      fields = Object.keys(data[0]);
+      fields = fields?.filter((f) => f !== 'formId' && f !== 'id').map((f) => f);
+    }
+    return { fields: fields, data: data, rls: rlsRes };
   },
 
-  listFormSubmissions: async (formId, params, currentUser, remoteCall = false) => {
+  listFormSubmissions: async (formId, params, currentUser, /*remoteFormId = null,*/ remoteCall = false) => {
     // getting rls for this form and user who is calling api
-    // TODO - select by remote form id
-    // const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
-    const rls = await FormRls.query().modify('filterUserId', currentUser?.id).first();
-    const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
+    const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
+    const isRls = rls && rls.length > 0 && params.noRls !== 'true';
     const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
-    if (remoteCall) {
-      formId = rls?.formId;
-    }
 
-    if (isRls && rls.customViewName) {
-      return await service.listFormCustomViewData(formId, rls.customViewName, rls.field, rls.value);
+    // TODO - select by remote Form ID if specified
+    // let rlsWithRemoteFormId = [];
+    // if (remoteCall && isRls && remoteFormId) {
+    //   rlsWithRemoteFormId = rls.filter((r) => r.remoteFormId === remoteFormId);
+    // }
+
+    if (isRls && rls[0].customViewName && remoteCall) {
+      return await service.listFormCustomViewData(formId, rls[0].customViewName, rls);
     }
 
     const query = SubmissionMetadata.query()
