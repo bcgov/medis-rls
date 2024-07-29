@@ -26,7 +26,7 @@ module.exports = {
   },
   delete: async (req, res, next) => {
     try {
-      const response = await service.delete(req.query.ids);
+      const response = await service.delete(req.params.formId, req.query.ids);
       res.status(200).json(response);
     } catch (error) {
       next(error);

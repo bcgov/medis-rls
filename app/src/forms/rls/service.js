@@ -94,21 +94,20 @@ const service = {
     return await FormRls.query().modify('filterFormId', formId).modify('filterUserId', userId);
   },
 
-  delete: async (ids) => {
-    let trx;
-    try {
-      trx = await FormRls.startTransaction();
+  delete: async (formId, ids) => {
+    const userIdsToDelete = ids.split(',');
+    if (Array.isArray(userIdsToDelete) && userIdsToDelete.length !== 0 && formId) {
+      let trx;
+      try {
+        trx = await FormRls.startTransaction();
+        await FormRls.query().delete().where('formId', formId).whereIn('userId', userIdsToDelete);
 
-      const idsToDelete = ids.split(',');
-      for (const id of idsToDelete) {
-        await FormRls.query().deleteById(id).throwIfNotFound();
+        await trx.commit();
+        return true;
+      } catch (err) {
+        if (trx) await trx.rollback();
+        throw err;
       }
-
-      await trx.commit();
-      return true;
-    } catch (err) {
-      if (trx) await trx.rollback();
-      throw err;
     }
   },
 };

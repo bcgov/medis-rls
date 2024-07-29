@@ -1,6 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import BaseDialog from '~/components/base/BaseDialog.vue';
 import { useFormStore } from '~/store/form';
 
 const props = defineProps({
@@ -68,6 +69,8 @@ const emit = defineEmits([
 ]);
 
 const localValues = ref([]);
+const localItemsToRls = ref([]);
+const showDeleteDialog = ref(false);
 
 const currentFieldRules = ref([
   (v) => {
@@ -83,6 +86,7 @@ const valueRules = ref([
 
 onMounted(() => {
   submissionList.value = [];
+  initializeLocalItemsToRls();
 });
 
 const formStore = useFormStore();
@@ -114,64 +118,65 @@ const initRlsFields = computed(() => {
   }
 });
 
-const localItemsToRls = computed(() => {
+const initializeLocalItemsToRls = () => {
   if (
     Array.isArray(props.itemsToRls[0]?.rls) &&
     props.itemsToRls[0]?.rls.length > 0
   ) {
-    props.itemsToRls[0]?.rls.map((rls, index) => {
+    localItemsToRls.value = props.itemsToRls[0].rls.map((rls, index) => {
       if (isCustomViewData.value) {
         const tempValues = props.customViewData?.data.map((v) => v[rls.field]);
-        const uniqueValues = [...new Set(tempValues)];
-        uniqueValues.sort();
-        if (!localValues.value[index]) {
-          localValues.value[index] = [];
-        }
-        uniqueValues.map((lv) => {
-          if (
-            lv !== '' &&
-            lv !== null &&
-            (typeof lv === 'string' || lv instanceof String)
-          ) {
-            localValues.value[index].push({ title: lv, value: lv });
-          }
-        });
+        const uniqueValues = [...new Set(tempValues)].sort();
+        localValues.value[index] = uniqueValues
+          .filter(
+            (lv) =>
+              lv !== '' &&
+              lv !== null &&
+              (typeof lv === 'string' || lv instanceof String)
+          )
+          .map((lv) => ({ title: lv, value: lv }));
       }
-      // else {
-      //   const criteria = {
-      //     formId: props.currentFormId,
-      //     formFields: rls.field,
-      //     noRls: true,
-      //   };
-      //   await formStore.fetchSubmissions(criteria);
-      // }
+      return { ...rls }; // Ensure a new object is returned to avoid reference issues
     });
+  } else {
+    localItemsToRls.value = [
+      {
+        id: null,
+        formId: props.currentFormId,
+        remoteFormId: null,
+        field: null,
+        value: null,
+      },
+    ];
   }
-  return props.itemsToRls[0]?.rls;
-});
+};
 
 const onFieldUpdate = async (index) => {
-  if (localItemsToRls.value[index].field) {
+  const selectedField = localItemsToRls.value[index].field;
+  if (selectedField) {
     localItemsToRls.value[index].value = null;
     localValues.value[index] = [];
     if (isCustomViewData.value) {
       const tempValues = props.customViewData?.data.map(
-        (v) => v[localItemsToRls.value[index].field]
+        (v) => v[selectedField]
       );
-      const uniqueValues = [...new Set(tempValues)];
-      uniqueValues.sort();
-      uniqueValues.map((lv) => {
-        if (typeof lv === 'string' || lv instanceof String) {
-          localValues.value[index].push({ title: lv, value: lv });
-        }
-      });
+      const uniqueValues = [...new Set(tempValues)].sort();
+      localValues.value[index] = uniqueValues
+        .filter(
+          (lv) =>
+            lv !== '' &&
+            lv !== null &&
+            (typeof lv === 'string' || lv instanceof String)
+        )
+        .map((lv) => ({ title: lv, value: lv }));
     } else {
       const criteria = {
         formId: props.currentFormId,
-        formFields: localItemsToRls.value[index].field,
+        formFields: selectedField,
         noRls: true,
       };
       await formStore.fetchSubmissions(criteria);
+      // Assuming fetchSubmissions updates localValues
     }
   }
 };
@@ -188,7 +193,7 @@ function transformStrings(array) {
 function addNewItem() {
   localItemsToRls.value.push({
     id: null,
-    formId: localItemsToRls.value[0]?.formId,
+    formId: props.currentFormId,
     remoteFormId: null,
     field: null,
     value: null,
@@ -208,9 +213,19 @@ function continueDialog() {
 }
 
 function deleteRls(index) {
-  //emit('delete-rls', index);
   localItemsToRls.value.splice(index, 1);
 }
+
+function deleteAllRls() {
+  showDeleteDialog.value = true;
+}
+
+function confirmedDeleteRls() {
+  emit('delete-rls');
+  showDeleteDialog.value = false;
+}
+
+watch(() => props.itemsToRls, initializeLocalItemsToRls, { deep: true });
 
 defineExpose({ RTL });
 </script>
@@ -262,7 +277,7 @@ defineExpose({ RTL });
             </v-col>
             <v-col cols="2" class="v-card-actions justify-center">
               <v-btn
-                v-if="rlsExist"
+                v-if="rlsExist || (!rlsExist && index !== 0)"
                 icon
                 size="24"
                 :disabled="
@@ -308,6 +323,17 @@ defineExpose({ RTL });
           </slot>
         </v-btn>
         <v-btn
+          v-if="rlsExist"
+          class="mb-5"
+          :disabled="deletingRls"
+          :loading="deletingRls"
+          color="red"
+          variant="flat"
+          @click="deleteAllRls"
+        >
+          Delete All
+        </v-btn>
+        <v-btn
           data-test="saveddelete-btn-cancel"
           class="mb-5"
           variant="outlined"
@@ -320,6 +346,23 @@ defineExpose({ RTL });
       </v-card-actions>
     </v-card>
   </v-dialog>
+  <BaseDialog
+    v-model="showDeleteDialog"
+    type="CONTINUE"
+    @close-dialog="showDeleteDialog = false"
+    @continue-dialog="confirmedDeleteRls"
+  >
+    <template #title><span :lang="lang">Confirm Deletion </span></template>
+    <template #text
+      ><span :lang="lang"
+        >Are you sure you wish to delete all RLS for
+        {{ itemsToRls[0].fullName }}</span
+      ></template
+    >
+    <template #button-text-continue>
+      <span :lang="lang">Delete</span>
+    </template>
+  </BaseDialog>
 </template>
 
 <style scoped>

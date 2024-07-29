@@ -290,8 +290,8 @@ export default {
     async deleteRls() {
       try {
         this.deletingRls = true;
-        const rlsIdsToDelete = this.itemsToRls.map((u) => u?.rls?.id);
-        await rlsService.deleteRlsUsers(this.formId, rlsIdsToDelete);
+        const rlsUserIdsToDelete = this.itemsToRls.map((u) => u?.userId);
+        await rlsService.deleteRlsUsers(this.formId, rlsUserIdsToDelete);
       } catch (error) {
         this.deletingRls = false;
         this.addNotification({
