@@ -73,6 +73,7 @@ const localItemsToRls = ref([]);
 const showDeleteDialog = ref(false);
 const actionButtonDisabled = ref(false);
 const showSetFormIdDialog = ref([false]);
+const currentIndex = ref(0);
 
 const currentFieldRules = ref([
   (v) => {
@@ -98,7 +99,6 @@ const requiredRules = ref([
 ]);
 
 onMounted(() => {
-  submissionList.value = [];
   initializeLocalItemsToRls();
 });
 
@@ -167,6 +167,7 @@ const initializeLocalItemsToRls = () => {
 
 const onFieldUpdate = async (index) => {
   const selectedField = localItemsToRls.value[index].field;
+  currentIndex.value = index;
   if (selectedField) {
     localItemsToRls.value[index].value = null;
     localValues.value[index] = [];
@@ -194,6 +195,26 @@ const onFieldUpdate = async (index) => {
     }
   }
 };
+
+watch(submissionList, async (newSubmissionList) => {
+  if (newSubmissionList && newSubmissionList.length > 0) {
+    const selectedField = localItemsToRls.value[currentIndex.value].field;
+    if (selectedField) {
+      localItemsToRls.value[currentIndex.value].value = null;
+      localValues.value[currentIndex.value] = [];
+      const tempValues = newSubmissionList.map((v) => v[selectedField]);
+      const uniqueValues = [...new Set(tempValues)].sort();
+      localValues.value[currentIndex.value] = uniqueValues
+        .filter(
+          (lv) =>
+            lv !== '' &&
+            lv !== null &&
+            (typeof lv === 'string' || lv instanceof String)
+        )
+        .map((lv) => ({ title: lv, value: lv }));
+    }
+  }
+});
 
 function transformStrings(array) {
   return array.map((str) => {

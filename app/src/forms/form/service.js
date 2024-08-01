@@ -418,7 +418,17 @@ const service = {
       .modify('orderDefault', params.sortBy && params.page ? true : false, params);
 
     if (isRls && !isNestedPath) {
-      query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
+      query.andWhere(function () {
+        this.where(function () {
+          rls.forEach(({ field, value }, index) => {
+            if (index === 0) {
+              this.whereRaw(`submission #>> '{data,${field}}' = '${value}'`);
+            } else {
+              this.orWhereRaw(`or submission #>> '{data,${field}}' = '${value}'`);
+            }
+          });
+        });
+      });
     } else if (isRls && isNestedPath) {
       // no in use for now
       query.whereRaw(`submission #>> '{data,${rls.nestedPath}}' = '${rls.value}'`);
@@ -439,14 +449,18 @@ const service = {
         selection.push('updatedBy');
       }
       if (Array.isArray(params.fields)) {
-        if (isRls && !params.fields.includes(rls.field)) {
-          params.fields.push(rls.field);
-        }
+        rls.forEach(({ field }) => {
+          if (isRls && !params.fields.includes(field)) {
+            params.fields.push(field);
+          }
+        });
         fields = params.fields.flatMap((f) => f.split(',').map((s) => s.trim()));
       } else {
-        if (isRls && params.fields.search(rls.field) === -1) {
-          params.fields.concat(`,${rls.field}`);
-        }
+        rls.forEach(({ field }) => {
+          if (isRls && params.fields.search(field) === -1) {
+            params.fields.concat(`,${field}`);
+          }
+        });
         fields = params.fields.split(',').map((s) => s.trim());
       }
 
