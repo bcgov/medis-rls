@@ -383,19 +383,25 @@ const service = {
     return { fields: fields, data: data, rls: rlsRes };
   },
 
-  listFormSubmissions: async (formId, params, currentUser, /*remoteFormId = null,*/ remoteCall = false) => {
+  listFormSubmissions: async (formId, params, currentUser, remoteFormId = null, remoteCall = false) => {
     // getting rls for this form and user who is calling api
-    const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
+    let rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
     const isRls = rls && rls.length > 0 && params.noRls !== 'true';
     const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
 
-    // TODO - select by remote Form ID if specified
-    // let rlsWithRemoteFormId = [];
-    // if (remoteCall && isRls && remoteFormId) {
-    //   rlsWithRemoteFormId = rls.filter((r) => r.remoteFormId === remoteFormId);
-    // }
+    // If remoteFormId specified we need to filter RLS array by this Form ID
+    if (remoteCall && isRls && remoteFormId) {
+      const rlsWithRemoteFormId = rls.filter((r) => r.remoteFormId === remoteFormId);
+      if (rlsWithRemoteFormId && rlsWithRemoteFormId.length > 0) {
+        // Filtering RLS array when we actually find any matching only
+        rls = rlsWithRemoteFormId;
+      } else {
+        // Otherwise pick with no remoteFormID only
+        rls = rls.filter((r) => r.remoteFormId === null || r.remoteFormId === '');
+      }
+    }
 
-    if (isRls && rls[0].customViewName && remoteCall) {
+    if (rls && rls.length > 0 && isRls && rls[0].customViewName && remoteCall) {
       return await service.listFormCustomViewData(formId, rls[0].customViewName, rls);
     }
 
@@ -414,6 +420,7 @@ const service = {
     if (isRls && !isNestedPath) {
       query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
     } else if (isRls && isNestedPath) {
+      // no in use for now
       query.whereRaw(`submission #>> '{data,${rls.nestedPath}}' = '${rls.value}'`);
     }
 

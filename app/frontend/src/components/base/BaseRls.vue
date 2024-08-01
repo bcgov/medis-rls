@@ -71,6 +71,8 @@ const emit = defineEmits([
 const localValues = ref([]);
 const localItemsToRls = ref([]);
 const showDeleteDialog = ref(false);
+const actionButtonDisabled = ref(false);
+const showSetFormIdDialog = ref([false]);
 
 const currentFieldRules = ref([
   (v) => {
@@ -81,6 +83,17 @@ const currentFieldRules = ref([
 const valueRules = ref([
   (v) => {
     return !!v || 'Please, select the value';
+  },
+]);
+
+const requiredRules = ref([
+  (v) => {
+    if (!v) {
+      actionButtonDisabled.value = true;
+      return 'This field is required';
+    }
+    actionButtonDisabled.value = false;
+    return true;
   },
 ]);
 
@@ -144,6 +157,7 @@ const initializeLocalItemsToRls = () => {
         id: null,
         formId: props.currentFormId,
         remoteFormId: null,
+        remoteFormName: null,
         field: null,
         value: null,
       },
@@ -195,6 +209,7 @@ function addNewItem() {
     id: null,
     formId: props.currentFormId,
     remoteFormId: null,
+    remoteFormName: null,
     field: null,
     value: null,
   });
@@ -223,6 +238,16 @@ function deleteAllRls() {
 function confirmedDeleteRls() {
   emit('delete-rls');
   showDeleteDialog.value = false;
+}
+
+function setFormId(index) {
+  showSetFormIdDialog.value[index] = true;
+}
+
+function deleteFormId(index) {
+  localItemsToRls.value[index].remoteFormId = null;
+  localItemsToRls.value[index].remoteFormName = null;
+  showSetFormIdDialog.value[index] = false;
 }
 
 watch(() => props.itemsToRls, initializeLocalItemsToRls, { deep: true });
@@ -277,6 +302,20 @@ defineExpose({ RTL });
             </v-col>
             <v-col cols="2" class="v-card-actions justify-center">
               <v-btn
+                icon
+                size="24"
+                :disabled="!rls.field && !rls.value"
+                :loading="deletingRls"
+                color="primary"
+                @click="setFormId(index)"
+              >
+                <v-icon
+                  size="16"
+                  color="white"
+                  icon="mdi:mdi-form-textbox"
+                ></v-icon>
+              </v-btn>
+              <v-btn
                 v-if="rlsExist || (!rlsExist && index !== 0)"
                 icon
                 size="24"
@@ -295,6 +334,83 @@ defineExpose({ RTL });
                 ></v-icon>
               </v-btn>
             </v-col>
+            <v-dialog
+              :max-width="600"
+              persistent
+              :model-value="showSetFormIdDialog[index]"
+              @click:outside="false"
+              @keydown.esc="false"
+            >
+              <v-card>
+                <div class="dialog-body" :class="{ 'dir-rtl': isRTL }">
+                  <div>
+                    <v-card-title class primary-title>
+                      Set CHEFS Form ID for pair<br />{{ rls.field }} -
+                      {{ rls.value }}
+                    </v-card-title>
+                    <v-row>
+                      <v-col cols="6">
+                        <v-text-field
+                          v-model="rls.remoteFormId"
+                          :rules="requiredRules"
+                          label="Form ID"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col cols="6">
+                        <v-text-field
+                          v-model="rls.remoteFormName"
+                          :rules="requiredRules"
+                          label="Form Name"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </div>
+                </div>
+                <v-card-actions class="justify-center">
+                  <v-btn
+                    class="mb-5 mr-5"
+                    :class="RTL"
+                    :disabled="
+                      rls.remoteFormId === null ||
+                      rls.remoteFormName === null ||
+                      rls.remoteFormId === '' ||
+                      rls.remoteFormName === ''
+                    "
+                    color="primary"
+                    variant="flat"
+                    @click="showSetFormIdDialog[index] = false"
+                  >
+                    <slot name="button-text-continue">
+                      <span :lang="lang">Save</span>
+                    </slot>
+                  </v-btn>
+                  <v-btn
+                    class="mb-5"
+                    :disabled="
+                      rls.remoteFormId === null ||
+                      rls.remoteFormName === null ||
+                      rls.remoteFormId === '' ||
+                      rls.remoteFormName === ''
+                    "
+                    color="red"
+                    variant="flat"
+                    @click="deleteFormId(index)"
+                  >
+                    Delete
+                  </v-btn>
+                  <v-btn
+                    data-test="saveddelete-btn-cancel"
+                    class="mb-5"
+                    variant="outlined"
+                    @click="showSetFormIdDialog[index] = false"
+                  >
+                    <slot name="button-text-delete">
+                      <span :lang="lang">Cancel</span>
+                    </slot>
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           </v-row>
         </div>
         <v-card-actions class="justify-left">

@@ -20,6 +20,8 @@ const service = {
               userId: user.id,
               field: rls.field,
               value: rls.value,
+              remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+              remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
               customViewName: data.customViewName,
               createdBy: currentUser.usernameIdp,
             }
@@ -60,6 +62,8 @@ const service = {
                 formId: formId,
                 field: rls.field,
                 value: rls.value,
+                remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+                remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
                 customViewName: data.customViewName,
                 updatedBy: currentUser.usernameIdp,
               }
@@ -73,6 +77,8 @@ const service = {
                 userId: user.id,
                 field: rls.field,
                 value: rls.value,
+                remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+                remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
                 customViewName: data.customViewName,
                 createdBy: currentUser.usernameIdp,
               }

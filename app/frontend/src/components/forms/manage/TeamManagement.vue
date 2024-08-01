@@ -242,6 +242,7 @@ export default {
             field: rls.field,
             value: rls.value,
             remoteFormId: rls.remoteFormId,
+            remoteFormName: rls.remoteFormName,
           });
           return true;
         });
@@ -260,31 +261,29 @@ export default {
     },
 
     async saveRls(payload) {
+      this.savingRls = true;
       try {
-        this.savingRls = true;
         const rlsUsers = this.itemsToRls.map((u) => {
           return { id: u.id };
         });
         const rlsPayload = Object.assign({ users: rlsUsers }, payload);
         await rlsService.setRlsForms(rlsPayload, { formId: this.formId });
+        this.addNotification({
+          text: 'RLS has been successfully assigned',
+          ...NotificationTypes.SUCCESS,
+        });
+        // refresh the table and rls stuff
+        await this.getRlsUsers();
+        this.createTableData();
       } catch (error) {
         this.savingRls = false;
         this.addNotification({
           text: 'Something went wrong while saving RLS',
           ...NotificationTypes.ERROR,
         });
-      } finally {
-        this.savingRls = false;
-        this.showRLSDialog = false;
-        this.addNotification({
-          text: 'RLS has been successfully assigned',
-          ...NotificationTypes.SUCCESS,
-        });
-
-        // refresh the table and rls stuff
-        await this.getRlsUsers();
-        this.createTableData();
       }
+      this.savingRls = false;
+      this.showRLSDialog = false;
     },
 
     async deleteRls() {
