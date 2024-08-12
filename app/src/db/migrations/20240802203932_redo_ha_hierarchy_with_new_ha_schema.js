@@ -1,6 +1,8 @@
 exports.up = function (knex) {
-  return Promise.resolve().then(() =>
-    knex.schema.raw(`CREATE OR REPLACE VIEW ha_hierarchy AS
+  return Promise.resolve()
+    .then(() => knex.schema.dropViewIfExists('ha_hierarchy'))
+    .then(() =>
+      knex.schema.raw(`CREATE OR REPLACE VIEW ha_hierarchy AS
   WITH community_expanded AS (
     SELECT
         jsonb_array_elements(submission->'communities') AS community,
@@ -185,12 +187,14 @@ SELECT
     "formId"
 FROM
     all_clinics;`)
-  );
+    );
 };
 
 exports.down = function (knex) {
-  return Promise.resolve().then(() =>
-    knex.schema.raw(`CREATE OR REPLACE VIEW ha_hierarchy AS
+  return Promise.resolve()
+    .then(() => knex.schema.dropViewIfExists('ha_hierarchy'))
+    .then(() =>
+      knex.schema.raw(`CREATE OR REPLACE VIEW ha_hierarchy AS
   WITH community_expanded AS (
       SELECT
           jsonb_array_elements(submission->'communities') AS community,
@@ -339,5 +343,5 @@ exports.down = function (knex) {
   LEFT JOIN upcc_clinic_expanded USING (community_name, pcn_name, pcn_type, health_authority, "formId")
   LEFT JOIN fnpcc_clinic_expanded USING (community_name, pcn_name, pcn_type, health_authority, "formId")
   LEFT JOIN nppcc_clinic_expanded USING (community_name, pcn_name, pcn_type, health_authority, "formId");`)
-  );
+    );
 };
