@@ -401,8 +401,11 @@ const service = {
       }
     }
 
-    if (rls && rls.length > 0 && isRls && rls[0].customViewName && remoteCall) {
-      return await service.listFormCustomViewData(formId, rls[0].customViewName, rls);
+    if (remoteCall) {
+      const form = await service.readForm(formId);
+      if (form.custom_view_name) {
+        return await service.listFormCustomViewData(formId, form.custom_view_name, rls);
+      }
     }
 
     const query = SubmissionMetadata.query()
