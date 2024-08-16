@@ -299,66 +299,72 @@ defineExpose({ RTL });
           <v-card-title class primary-title>
             RLS for user {{ itemsToRls[0].fullName }}
           </v-card-title>
-          <v-row v-for="(rls, index) in localItemsToRls" :key="index">
-            <v-col cols="5">
-              <v-card-subtitle
-                >Select current form field name for filtering</v-card-subtitle
-              >
-              <v-select
-                v-model="rls.field"
-                :rules="currentFieldRules"
-                label="RLS Field Name"
-                :items="initRlsFields"
-                @update:modelValue="onFieldUpdate(index)"
-              ></v-select>
-            </v-col>
-            <v-col cols="5">
-              <v-card-subtitle>Select the value for mapping</v-card-subtitle>
-              <v-select
-                v-model="rls.value"
-                :rules="valueRules"
-                label="Value"
-                :items="localValues[index]"
-              ></v-select>
-            </v-col>
-            <v-col cols="2" class="v-card-actions justify-center">
-              <v-btn
-                icon
-                size="24"
-                :disabled="!rls.field && !rls.value"
-                :loading="deletingRls"
-                color="primary"
-                @click="setFormId(index)"
-              >
-                <v-icon
-                  size="16"
-                  color="white"
-                  icon="mdi:mdi-form-textbox"
-                ></v-icon>
-              </v-btn>
-              <v-btn
-                v-if="rlsExist || (!rlsExist && index !== 0)"
-                icon
-                size="24"
-                :disabled="
-                  deletingRls ||
-                  (localItemsToRls && localItemsToRls.length === 1)
-                "
-                :loading="deletingRls"
-                color="red"
-                @click="deleteRls(index)"
-              >
-                <v-icon
-                  size="16"
-                  color="white"
-                  icon="mdi:mdi-trash-can"
-                ></v-icon>
-              </v-btn>
-            </v-col>
+          <div v-for="(rls, index) in localItemsToRls" :key="index">
+            <v-row v-if="rls.remoteFormId && rls.remoteFormName">
+              <v-col cols="12" :style="{ padding: '10px 10px 0' }">
+                <v-chip>{{ rls.remoteFormName }}</v-chip>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="5">
+                <v-card-subtitle>Select field name</v-card-subtitle>
+                <v-select
+                  v-model="rls.field"
+                  :rules="currentFieldRules"
+                  label="RLS Field Name"
+                  :items="initRlsFields"
+                  @update:modelValue="onFieldUpdate(index)"
+                ></v-select>
+              </v-col>
+              <v-col cols="5">
+                <v-card-subtitle>Select the value</v-card-subtitle>
+                <v-select
+                  v-model="rls.value"
+                  :rules="valueRules"
+                  label="Value"
+                  :items="localValues[index]"
+                ></v-select>
+              </v-col>
+              <v-col cols="2" class="v-card-actions justify-center">
+                <v-btn
+                  icon
+                  size="24"
+                  :disabled="!rls.field && !rls.value"
+                  :loading="deletingRls"
+                  color="primary"
+                  @click="setFormId(index)"
+                >
+                  <v-icon
+                    size="16"
+                    color="white"
+                    icon="mdi:mdi-form-textbox"
+                  ></v-icon>
+                </v-btn>
+                <v-btn
+                  v-if="rlsExist || (!rlsExist && index !== 0)"
+                  icon
+                  size="24"
+                  :disabled="
+                    deletingRls ||
+                    (localItemsToRls && localItemsToRls.length === 1)
+                  "
+                  :loading="deletingRls"
+                  color="red"
+                  @click="deleteRls(index)"
+                >
+                  <v-icon
+                    size="16"
+                    color="white"
+                    icon="mdi:mdi-trash-can"
+                  ></v-icon>
+                </v-btn>
+              </v-col>
+            </v-row>
             <v-dialog
               :max-width="600"
               persistent
               :model-value="showSetFormIdDialog[index]"
+              :style="{ zIndex: 99999 }"
               @click:outside="false"
               @keydown.esc="false"
             >
@@ -432,7 +438,7 @@ defineExpose({ RTL });
                 </v-card-actions>
               </v-card>
             </v-dialog>
-          </v-row>
+          </div>
         </div>
         <v-card-actions class="justify-left">
           <v-btn
