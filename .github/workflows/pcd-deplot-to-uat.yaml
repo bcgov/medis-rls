@@ -1,6 +1,6 @@
 # This is a basic workflow that will start a build with every push on test branch
 
-name: PCD RLS Deploy on Dev environment
+name: PCD RLS Deploy on Test environment
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
