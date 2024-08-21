@@ -3,40 +3,40 @@ apiVersion: template.openshift.io/v1
 kind: Template
 labels:
   app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "pcd-rls-dev"
+  app.kubernetes.io/instance: "pcd-rls-${ENVIRONMENT}"
   app.kubernetes.io/managed-by: kubectl
   app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "pcd-rls-dev"
-  app: "pcd-rls-dev"
-  template: "pcd-rls-app-dc-template"
+  app.kubernetes.io/part-of: "pcd-rls-${ENVIRONMENT}"
+  app: "pcd-rls-${ENVIRONMENT}"
+  template: "pcd-rls-app-dc-uat-template"
 metadata:
-  name: "pcd-rls-app-dc"
+  name: "pcd-rls-app-dc-uat"
 objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-${REPO_NAME}-app-${JOB_NAME}-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${REPO_NAME}-app-${ENVIRONMENT}-to-patroni-master-cluster"
     spec:
       # Allow app to talk to Patroni cluster
       ingress:
         - from:
             - podSelector:
                 matchLabels:
-                  app: "${REPO_NAME}-${JOB_NAME}"
-                  deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+                  app: "${REPO_NAME}-${ENVIRONMENT}"
+                  deploymentconfig: "${REPO_NAME}-app-${ENVIRONMENT}"
                   role: app
           ports:
             - port: 5432
               protocol: TCP
       podSelector:
         matchLabels:
-          cluster-name: "${JOB_NAME}"
-          statefulset: "patroni-${JOB_NAME}"
+          cluster-name: "master"
+          statefulset: "patroni-master"
           role: master
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-${REPO_NAME}-pre-hook-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${REPO_NAME}-${ENVIRONMENT}-pre-hook-to-patroni-master-cluster"
     spec:
       # Allow app pre-hook pods to talk to Patroni cluster
       ingress:
@@ -49,21 +49,21 @@ objects:
               protocol: TCP
       podSelector:
         matchLabels:
-          cluster-name: "${JOB_NAME}"
-          statefulset: "patroni-${JOB_NAME}"
+          cluster-name: "master"
+          statefulset: "patroni-master"
           role: master
   - apiVersion: v1
     kind: DeploymentConfig
     metadata:
       annotations:
-        app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"StatefulSet","name":"patroni-${JOB_NAME}"}]'
-      name: "${REPO_NAME}-app-${JOB_NAME}"
+        app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"StatefulSet","name":"patroni-master"}]'
+      name: "${REPO_NAME}-app-${ENVIRONMENT}"
     spec:
       replicas: ${{REPLICAS}}
       revisionHistoryLimit: 10
       selector:
-        app: "${REPO_NAME}-${JOB_NAME}"
-        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+        app: "${REPO_NAME}-${ENVIRONMENT}"
+        deploymentconfig: "${REPO_NAME}-app-${ENVIRONMENT}"
         role: app
       strategy:
         type: Rolling
@@ -84,27 +84,27 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-rls-db-name
-                      name: "patroni-${JOB_NAME}-secret"
+                      key: app-rls-uat-db-name
+                      name: "patroni-master-secret"
                 - name: DB_HOST
-                  value: "patroni-${JOB_NAME}"
+                  value: "patroni-master"
                 - name: DB_USERNAME
                   valueFrom:
                     secretKeyRef:
                       key: app-db-username
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "patroni-master-secret"
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       key: app-db-password
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "patroni-master-secret"
                 - name: SERVER_BASEPATH
                   value: "${ROUTE_PATH}"
       template:
         metadata:
           labels:
-            app: "${REPO_NAME}-${JOB_NAME}"
-            deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+            app: "${REPO_NAME}-${ENVIRONMENT}"
+            deploymentconfig: "${REPO_NAME}-app-${ENVIRONMENT}"
             role: app
         spec:
           containers:
@@ -143,20 +143,20 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-rls-db-name
-                      name: "patroni-${JOB_NAME}-secret"
+                      key: app-rls-uat-db-name
+                      name: "patroni-master-secret"
                 - name: DB_HOST
-                  value: "patroni-${JOB_NAME}"
+                  value: "patroni-master"
                 - name: DB_USERNAME
                   valueFrom:
                     secretKeyRef:
                       key: app-db-username
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "patroni-master-secret"
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       key: app-db-password
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "patroni-master-secret"
                 - name: FRONTEND_BASEPATH
                   value: "${ROUTE_PATH}"
                 - name: VITE_FRONTEND_BASEPATH
@@ -228,17 +228,17 @@ objects:
                   valueFrom:
                     secretKeyRef:
                       key: mailapitoken
-                      name: "chefs-${JOB_NAME}-secret"
+                      name: "chefs-master-secret"
                 - name: WEBHOOK_SECRET
                   valueFrom:
                     secretKeyRef:
                       key: webhooksecret
-                      name: "${REPO_NAME}-secret"
+                      name: "${REPO_NAME}-${ENVIRONMENT}-secret"
                 - name: EXTERNAL_API_KEY
                   valueFrom:
                     secretKeyRef:
                       key: externalapikey
-                      name: "${REPO_NAME}-secret"
+                      name: "${REPO_NAME}-${ENVIRONMENT}-secret"
                 # - name: SERVER_LOGFILE
                 #   value: "/var/log/app.log"
               envFrom:
@@ -247,9 +247,9 @@ objects:
                 - configMapRef:
                     name: "${APP_NAME}-sc-config"
                 - configMapRef:
-                    name: "${REPO_NAME}-server-config"
+                    name: "${REPO_NAME}-${ENVIRONMENT}-server-config"
                 - configMapRef:
-                    name: "${REPO_NAME}-service-config"
+                    name: "${REPO_NAME}-${ENVIRONMENT}-service-config"
                 - configMapRef:
                     name: "${APP_NAME}-files-config"
                 - configMapRef:
@@ -264,19 +264,19 @@ objects:
       test: false
       triggers:
         - type: ConfigChange
-        # - imageChangeParams:
-        #     automatic: true
-        #     containerNames:
-        #       - app
-        #     from:
-        #       kind: ImageStreamTag
-        #       name: "${REPO_NAME}-app:${JOB_NAME}"
-        #       namespace: "${NAMESPACE}"
-        #   type: ImageChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - app
+            from:
+              kind: ImageStreamTag
+              name: "${REPO_NAME}:${ENVIRONMENT}"
+              namespace: "${NAMESPACE}"
+          type: ImageChange
   - apiVersion: v1
     kind: Service
     metadata:
-      name: "${REPO_NAME}-app-${JOB_NAME}"
+      name: "${REPO_NAME}-app-${ENVIRONMENT}"
     spec:
       ports:
         - name: 8080-tcp
@@ -284,8 +284,8 @@ objects:
           protocol: TCP
           targetPort: 8080
       selector:
-        app: "${REPO_NAME}-${JOB_NAME}"
-        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+        app: "${REPO_NAME}-${ENVIRONMENT}"
+        deploymentconfig: "${REPO_NAME}-app-${ENVIRONMENT}"
         role: app
       sessionAffinity: None
 parameters:
@@ -293,13 +293,13 @@ parameters:
     description: Application name
     displayName: Application name
     required: true
+  - name: ENVIRONMENT
+    description: Environment identifier (i.e. 'dev' OR 'test' OR 'prod')
+    displayName: Environment
+    required: true
   - name: ROUTE_PATH
     description: Configure the route path (ex. /pr-5 or /app), also used for VITE_FRONTEND_BASEPATH
     displayName: Route path
-    required: true
-  - name: JOB_NAME
-    description: Job identifier (i.e. 'pr-5' OR 'master')
-    displayName: Job Branch Name
     required: true
   - name: IMAGE_REGISTRY
     description: The container registry

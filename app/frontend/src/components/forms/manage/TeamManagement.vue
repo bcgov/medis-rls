@@ -65,6 +65,7 @@ export default {
       'form',
       'formList',
       'formFields',
+      'formCustomViewData',
       'permissions',
       'isRTL',
       'lang',
@@ -141,6 +142,7 @@ export default {
     ...mapActions(useFormStore, [
       'fetchForm',
       'fetchFormFields',
+      'fetchFormCustomView',
       'getFormPermissionsForUser',
     ]),
     ...mapActions(useNotificationStore, ['addNotification']),
@@ -152,7 +154,9 @@ export default {
         await this.fetchForm(this.formId),
         await this.getFormPermissionsForUser(this.formId),
         await this.getRolesList(),
-        await this.getFormFields(),
+        this.form.custom_view_name
+          ? await this.getFormCustomView(this.form.custom_view_name)
+          : await this.getFormFields(),
         await this.getFormUsers(),
       ]);
 
@@ -211,6 +215,13 @@ export default {
       });
     },
 
+    async getFormCustomView(viewName) {
+      await this.fetchFormCustomView({
+        formId: this.formId,
+        viewName: viewName,
+      });
+    },
+
     async getRlsUsers() {
       try {
         if (!this.canManageTeam) {
@@ -219,14 +230,20 @@ export default {
           );
         }
         this.rlsLoading = true;
+        this.rlsUsers = [];
         const rlsUsersResponse = await rlsService.getRlsUsers(this.formId);
         rlsUsersResponse?.data?.map((rls) => {
-          this.rlsUsers[rls.userId] = {
+          if (!this.rlsUsers[rls.userId]) {
+            this.rlsUsers[rls.userId] = [];
+          }
+          this.rlsUsers[rls.userId].push({
             id: rls.id,
             formId: rls.formId,
             field: rls.field,
             value: rls.value,
-          };
+            remoteFormId: rls.remoteFormId,
+            remoteFormName: rls.remoteFormName,
+          });
           return true;
         });
       } catch (error) {
@@ -244,38 +261,36 @@ export default {
     },
 
     async saveRls(payload) {
+      this.savingRls = true;
       try {
-        this.savingRls = true;
         const rlsUsers = this.itemsToRls.map((u) => {
           return { id: u.id };
         });
         const rlsPayload = Object.assign({ users: rlsUsers }, payload);
         await rlsService.setRlsForms(rlsPayload, { formId: this.formId });
-      } catch (error) {
-        this.savingRls = false;
-        this.addNotification({
-          text: error.message,
-          consoleError: error,
-        });
-      } finally {
-        this.savingRls = false;
-        this.showRLSDialog = false;
         this.addNotification({
           text: 'RLS has been successfully assigned',
           ...NotificationTypes.SUCCESS,
         });
-
         // refresh the table and rls stuff
         await this.getRlsUsers();
         this.createTableData();
+      } catch (error) {
+        this.savingRls = false;
+        this.addNotification({
+          text: 'Something went wrong while saving RLS',
+          ...NotificationTypes.ERROR,
+        });
       }
+      this.savingRls = false;
+      this.showRLSDialog = false;
     },
 
     async deleteRls() {
       try {
         this.deletingRls = true;
-        const rlsIdsToDelete = this.itemsToRls.map((u) => u?.rls?.id);
-        await rlsService.deleteRlsUsers(this.formId, rlsIdsToDelete);
+        const rlsUserIdsToDelete = this.itemsToRls.map((u) => u?.userId);
+        await rlsService.deleteRlsUsers(this.formId, rlsUserIdsToDelete);
       } catch (error) {
         this.deletingRls = false;
         this.addNotification({
@@ -845,6 +860,8 @@ export default {
       :current-form-fields="formFields"
       :current-form-id="formId"
       :rls-exist="rlsExist"
+      :custom-view-name="form.custom_view_name"
+      :custom-view-data="formCustomViewData"
       @close-dialog="showRLSDialog = false"
       @continue-dialog="saveRls"
       @delete-rls="deleteRls"

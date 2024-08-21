@@ -19,7 +19,7 @@ export default {
    * @returns {Promise} An axios response
    */
   setRlsForms(requestBody, params = {}) {
-    if (requestBody?.editing) {
+    if (requestBody?.updating) {
       return appAxios().put(`${ApiRoutes.RLS}/${params.formId}`, requestBody);
     }
     return appAxios().post(`${ApiRoutes.RLS}/${params.formId}`, requestBody);

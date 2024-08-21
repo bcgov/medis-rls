@@ -12,20 +12,23 @@ const service = {
       trx = await FormRls.startTransaction();
 
       for (const user of data.users) {
-        const obj = Object.assign(
-          {},
-          {
-            formId: formId,
-            userId: user.id,
-            field: data.field,
-            value: data.value,
-            nestedPath: data.nestedPath,
-            createdBy: currentUser.usernameIdp,
-          }
-        );
-        obj.id = uuidv4();
-
-        await FormRls.query(trx).insert(obj);
+        for (const rls of data.rlsItems) {
+          const obj = Object.assign(
+            {},
+            {
+              formId: formId,
+              userId: user.id,
+              field: rls.field,
+              value: rls.value,
+              remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+              remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+              customViewName: data.customViewName,
+              createdBy: currentUser.usernameIdp,
+            }
+          );
+          obj.id = uuidv4();
+          await FormRls.query(trx).insert(obj);
+        }
       }
       await trx.commit();
       return true;
@@ -41,21 +44,50 @@ const service = {
       trx = await FormRls.startTransaction();
 
       for (const user of data.users) {
-        const obj = await service.read(user.id, formId);
-        const update = Object.assign(
-          {},
-          {
-            formId: formId,
-            field: data.field,
-            value: data.value,
-            nestedPath: data.nestedPath,
-            updatedBy: currentUser.usernameIdp,
+        // we still can get cases when we remove RLS on frontend but it's still in DB,
+        // so we need to delete it in DB as well
+        const userRls = await service.read(user.id, formId);
+        const payloadRlsIds = data.rlsItems.map((ri) => ri.id);
+        const idsNotInPayload = userRls.filter((ur) => !payloadRlsIds.includes(ur.id));
+        if (idsNotInPayload && idsNotInPayload.length > 0) {
+          for (const deleteId of idsNotInPayload) {
+            await FormRls.query().deleteById(deleteId.id);
           }
-        );
-
-        await FormRls.query(trx).patchAndFetchById(obj.id, update);
+        }
+        for (const rls of data.rlsItems) {
+          if (rls.id) {
+            const update = Object.assign(
+              {},
+              {
+                formId: formId,
+                field: rls.field,
+                value: rls.value,
+                remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+                remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+                customViewName: data.customViewName,
+                updatedBy: currentUser.usernameIdp,
+              }
+            );
+            await FormRls.query(trx).patchAndFetchById(rls.id, update);
+          } else {
+            const obj = Object.assign(
+              {},
+              {
+                formId: formId,
+                userId: user.id,
+                field: rls.field,
+                value: rls.value,
+                remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
+                remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+                customViewName: data.customViewName,
+                createdBy: currentUser.usernameIdp,
+              }
+            );
+            obj.id = uuidv4();
+            await FormRls.query(trx).insert(obj);
+          }
+        }
       }
-
       await trx.commit();
       return true;
     } catch (err) {
@@ -65,24 +97,23 @@ const service = {
   },
 
   read: async (userId, formId) => {
-    return await FormRls.query().modify('filterFormId', formId).modify('filterUserId', userId).first();
+    return await FormRls.query().modify('filterFormId', formId).modify('filterUserId', userId);
   },
 
-  delete: async (ids) => {
-    let trx;
-    try {
-      trx = await FormRls.startTransaction();
+  delete: async (formId, ids) => {
+    const userIdsToDelete = ids.split(',');
+    if (Array.isArray(userIdsToDelete) && userIdsToDelete.length !== 0 && formId) {
+      let trx;
+      try {
+        trx = await FormRls.startTransaction();
+        await FormRls.query().delete().where('formId', formId).whereIn('userId', userIdsToDelete);
 
-      const idsToDelete = ids.split(',');
-      for (const id of idsToDelete) {
-        await FormRls.query().deleteById(id).throwIfNotFound();
+        await trx.commit();
+        return true;
+      } catch (err) {
+        if (trx) await trx.rollback();
+        throw err;
       }
-
-      await trx.commit();
-      return true;
-    } catch (err) {
-      if (trx) await trx.rollback();
-      throw err;
     }
   },
 };

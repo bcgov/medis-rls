@@ -1,3 +1,5 @@
+const DataConnection = require('../../db/dataConnection');
+const dataConnection = new DataConnection();
 const Problem = require('api-problem');
 const { ref } = require('objection');
 const { v4: uuidv4 } = require('uuid');
@@ -28,6 +30,8 @@ const { falsey, queryUtils, checkIsFormExpired, validateScheduleObject, typeUtil
 const { Permissions, Roles, Statuses } = require('../common/constants');
 // const { hasFormRoles } = require('../auth/middleware/userAccess');
 // const R = require('../common/constants').Roles;
+const { flatten, unflatten } = require('uni-flatten');
+// const _ = require('lodash');
 const Rolenames = [Roles.OWNER, Roles.TEAM_MANAGER, Roles.FORM_DESIGNER, Roles.SUBMISSION_REVIEWER, Roles.FORM_SUBMITTER, Roles.SUBMISSION_APPROVER];
 
 const service = {
@@ -176,6 +180,7 @@ const service = {
         ministry: data.ministry,
         apiIntegration: data.apiIntegration,
         useCase: data.useCase,
+        custom_view_name: data.custom_view_name,
       };
 
       await Form.query(trx).patchAndFetchById(formId, upd);
@@ -349,7 +354,60 @@ const service = {
     return DocumentTemplate.query().findById(documentTemplateId).modify('filterActive', true).throwIfNotFound();
   },
 
-  listFormSubmissions: async (formId, params, currentUser) => {
+  listFormCustomViewData: async (formId, viewName, rls = null) => {
+    const query = dataConnection.knex.select('*').from(viewName).where('formId', formId);
+    let rlsRes = [];
+    if (rls && rls.length > 0) {
+      query.andWhere(function () {
+        this.where(function () {
+          rls.forEach(({ field, value }, index) => {
+            if (index === 0) {
+              this.where(field, value);
+            } else {
+              this.orWhere(field, value);
+            }
+          });
+        });
+      });
+      rls.map((r) => {
+        rlsRes.push({ field: r.field, value: r.value });
+        return true;
+      });
+    }
+    const data = await query;
+    let fields = [];
+    if (data && data.length > 0) {
+      fields = Object.keys(data[0]);
+      fields = fields?.filter((f) => f !== 'formId' && f !== 'id').map((f) => f);
+    }
+    return { fields: fields, data: data, rls: rlsRes };
+  },
+
+  listFormSubmissions: async (formId, params, currentUser, remoteFormId = null, remoteCall = false) => {
+    // getting rls for this form and user who is calling api
+    let rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
+    const isRls = rls && rls.length > 0 && params.noRls !== 'true';
+    const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
+
+    // If remoteFormId specified we need to filter RLS array by this Form ID
+    if (remoteCall && isRls && remoteFormId) {
+      const rlsWithRemoteFormId = rls.filter((r) => r.remoteFormId === remoteFormId);
+      if (rlsWithRemoteFormId && rlsWithRemoteFormId.length > 0) {
+        // Filtering RLS array when we actually find any matching only
+        rls = rlsWithRemoteFormId;
+      } else {
+        // Otherwise pick with no remoteFormID only
+        rls = rls.filter((r) => r.remoteFormId === null || r.remoteFormId === '');
+      }
+    }
+
+    if (remoteCall) {
+      const form = await service.readForm(formId);
+      if (form.custom_view_name) {
+        return await service.listFormCustomViewData(formId, form.custom_view_name, rls);
+      }
+    }
+
     const query = SubmissionMetadata.query()
       .where('formId', formId)
       .modify('filterSubmissionId', params.submissionId)
@@ -362,13 +420,20 @@ const service = {
       .modify('filterformSubmissionStatusCode', params.filterformSubmissionStatusCode)
       .modify('orderDefault', params.sortBy && params.page ? true : false, params);
 
-    // getting rls for this form and user who is calling api
-    const rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id).first();
-    const isRls = rls && rls?.field && rls?.value && params.noRls !== 'true';
-    const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
     if (isRls && !isNestedPath) {
-      query.whereRaw(`submission #>> '{data,${rls.field}}' = '${rls.value}'`);
+      query.andWhere(function () {
+        this.where(function () {
+          rls.forEach(({ field, value }, index) => {
+            if (index === 0) {
+              this.whereRaw(`submission #>> '{data,${field}}' = '${value}'`);
+            } else {
+              this.orWhereRaw(`or submission #>> '{data,${field}}' = '${value}'`);
+            }
+          });
+        });
+      });
     } else if (isRls && isNestedPath) {
+      // no in use for now
       query.whereRaw(`submission #>> '{data,${rls.nestedPath}}' = '${rls.value}'`);
     }
 
@@ -387,14 +452,18 @@ const service = {
         selection.push('updatedBy');
       }
       if (Array.isArray(params.fields)) {
-        if (isRls && !params.fields.includes(rls.field)) {
-          params.fields.push(rls.field);
-        }
+        rls.forEach(({ field }) => {
+          if (isRls && !params.fields.includes(field)) {
+            params.fields.push(field);
+          }
+        });
         fields = params.fields.flatMap((f) => f.split(',').map((s) => s.trim()));
       } else {
-        if (isRls && params.fields.search(rls.field) === -1) {
-          params.fields.concat(`,${rls.field}`);
-        }
+        rls.forEach(({ field }) => {
+          if (isRls && params.fields.search(field) === -1) {
+            params.fields.concat(`,${field}`);
+          }
+        });
         fields = params.fields.split(',').map((s) => s.trim());
       }
 
@@ -412,6 +481,9 @@ const service = {
       const noFields = ['lateEntry'];
       if (isRls) {
         noFields.push(rls.field);
+        if (isNestedPath) {
+          noFields.push(rls.nestedPath.split(',')[0]);
+        }
       }
       query.select(
         selection,
@@ -420,13 +492,64 @@ const service = {
     }
 
     if (params.paginationEnabled) {
-      return await service.processPaginationData(query, parseInt(params.page), parseInt(params.itemsPerPage), params.totalSubmissions, params.search, params.searchEnabled);
+      return await service.processPaginationData(
+        query,
+        parseInt(params.page),
+        parseInt(params.itemsPerPage),
+        params.totalSubmissions,
+        params.search,
+        params.searchEnabled,
+        isRls,
+        isNestedPath,
+        rls
+      );
     }
 
+    const res = await query;
+    if (isRls && isNestedPath) {
+      return service.getNestedRlsResult(res, rls.nestedPath);
+    }
     return query;
   },
 
-  async processPaginationData(query, page, itemsPerPage, totalSubmissions, search, searchEnabled) {
+  getNestedRlsResult(result, nestedPath) {
+    if (result && Object.prototype.hasOwnProperty.call(result, 'results')) {
+      result.results = result.results.map((r) => {
+        return service.getPicked(r, nestedPath);
+      });
+      return result;
+    } else {
+      return result.map((r) => {
+        return service.getPicked(r, nestedPath);
+      });
+    }
+  },
+
+  getPicked(res, nestedPath) {
+    const origPath = nestedPath.split(',');
+    const newNestedPath = nestedPath.split(',');
+    if (newNestedPath.length > 3) {
+      newNestedPath.pop();
+    }
+    const flattenObj = flatten(res[origPath[0]]);
+    newNestedPath.shift();
+    const newPath = newNestedPath.join(',');
+    let q = [];
+    Object.keys(flattenObj).map((fk) => {
+      const newFk = fk.replace(/^\[/, '').replaceAll('[', ',').replaceAll('].', ',');
+      q.push(newFk.split(',').length === 2 && newFk.split(',')[0] === newPath.split(',')[0]);
+      if (!newFk.includes(newPath) && !(newFk.split(',').length === 2 && newFk.split(',')[0] === newPath.split(',')[0])) {
+        delete flattenObj[fk];
+      }
+    });
+    res[origPath[0]] = unflatten(flattenObj);
+    if (res[origPath[0]] && res[origPath[0]].length > 0) {
+      res[origPath[0]] = res[origPath[0]].filter((v) => v !== null);
+    }
+    return res;
+  },
+
+  async processPaginationData(query, page, itemsPerPage, totalSubmissions, search, searchEnabled, isRls, isNestedPath, rls) {
     let isSearchAble = typeUtils.isBoolean(searchEnabled) ? searchEnabled : searchEnabled !== undefined ? JSON.parse(searchEnabled) : false;
     if (isSearchAble) {
       let submissionsData = await query;
@@ -471,7 +594,11 @@ const service = {
       if (itemsPerPage && parseInt(itemsPerPage) === -1) {
         return await query.page(parseInt(page), parseInt(totalSubmissions || 0));
       } else if (itemsPerPage && parseInt(page) >= 0) {
-        return await query.page(parseInt(page), parseInt(itemsPerPage));
+        const res = await query.page(parseInt(page), parseInt(itemsPerPage));
+        if (isRls && isNestedPath) {
+          return service.getNestedRlsResult(res, rls.nestedPath);
+        }
+        return res;
       }
     }
   },

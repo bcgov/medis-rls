@@ -168,6 +168,20 @@ module.exports = {
       next(error);
     }
   },
+  listFormCustomViewData: async (req, res, next) => {
+    try {
+      const formId = req.params.formId;
+      const viewName = req.params.viewName;
+      if (!validate(formId)) {
+        res.status(400).json({ detail: `Bad formId "${formId}".` });
+      } else {
+        const response = await service.listFormCustomViewData(formId, viewName);
+        res.status(200).json(response);
+      }
+    } catch (error) {
+      next(error);
+    }
+  },
   readVersion: async (req, res, next) => {
     try {
       const response = await service.readVersion(req.params.formVersionId);

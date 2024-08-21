@@ -390,6 +390,17 @@ export default {
   },
 
   /**
+   * @function listCustomViewData
+   * Get a list of valid form fields in this form version
+   * @param {string} formId The form uuid
+   * @param {string} viewName PostgreSQL Custom View Name
+   * @returns {Promise} An axios response
+   */
+  listCustomViewData(formId, viewName) {
+    return appAxios().get(`${ApiRoutes.FORMS}/${formId}/view/${viewName}`);
+  },
+
+  /**
    * @function readCSVExportFields
    * Get a list of valid form fields in this form version
    * @param {string} formId The form uuid
