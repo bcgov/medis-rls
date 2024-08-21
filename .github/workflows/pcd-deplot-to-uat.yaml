@@ -35,5 +35,5 @@ jobs:
       - name: Log in to Openshift
         run: oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER}}
     #check if run return an error
-      - name: Tag for Dev
+      - name: Tag for UAT deployment
         run: oc start-build pcd-rls-test -n ${{ secrets.NAMESPACE_SRC }} --follow
