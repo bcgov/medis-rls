@@ -264,15 +264,15 @@ objects:
       test: false
       triggers:
         - type: ConfigChange
-        # - imageChangeParams:
-        #     automatic: true
-        #     containerNames:
-        #       - app
-        #     from:
-        #       kind: ImageStreamTag
-        #       name: "${REPO_NAME}-app:${JOB_NAME}"
-        #       namespace: "${NAMESPACE}"
-        #   type: ImageChange
+        - imageChangeParams:
+            automatic: true
+            containerNames:
+              - app
+            from:
+              kind: ImageStreamTag
+              name: "${REPO_NAME}:${ENVIRONMENT}"
+              namespace: "${NAMESPACE}"
+          type: ImageChange
   - apiVersion: v1
     kind: Service
     metadata:
