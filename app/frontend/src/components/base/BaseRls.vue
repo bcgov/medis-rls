@@ -70,6 +70,7 @@ const emit = defineEmits([
 
 const localValues = ref([]);
 const localItemsToRls = ref([]);
+const initItemsToRls = ref([]);
 const showDeleteDialog = ref(false);
 const actionButtonDisabled = ref(false);
 const showSetFormIdDialog = ref([false]);
@@ -163,6 +164,7 @@ const initializeLocalItemsToRls = () => {
       },
     ];
   }
+  initItemsToRls.value = JSON.parse(JSON.stringify(localItemsToRls.value));
 };
 
 const onFieldUpdate = async (index) => {
@@ -237,6 +239,11 @@ function addNewItem() {
 }
 
 function closeDialog() {
+  initItemsToRls.value.map((rls, index) => {
+    localItemsToRls.value[index].field = rls.field;
+    localItemsToRls.value[index].value = rls.value;
+    return true;
+  });
   emit('close-dialog');
 }
 
@@ -268,6 +275,14 @@ function setFormId(index) {
 function deleteFormId(index) {
   localItemsToRls.value[index].remoteFormId = null;
   localItemsToRls.value[index].remoteFormName = null;
+  showSetFormIdDialog.value[index] = false;
+}
+
+function cancelFormId(index) {
+  localItemsToRls.value[index].remoteFormId =
+    initItemsToRls.value[index].remoteFormId;
+  localItemsToRls.value[index].remoteFormName =
+    initItemsToRls.value[index].remoteFormName;
   showSetFormIdDialog.value[index] = false;
 }
 
@@ -429,7 +444,7 @@ defineExpose({ RTL });
                     data-test="saveddelete-btn-cancel"
                     class="mb-5"
                     variant="outlined"
-                    @click="showSetFormIdDialog[index] = false"
+                    @click="cancelFormId(index)"
                   >
                     <slot name="button-text-delete">
                       <span :lang="lang">Cancel</span>
