@@ -47,7 +47,7 @@ const service = {
         // we still can get cases when we remove RLS on frontend but it's still in DB,
         // so we need to delete it in DB as well
         const userRls = await service.read(user.id, formId);
-        const payloadRlsIds = data.rlsItems.map((ri) => ri.id);
+        const payloadRlsIds = data.rlsItems?.map((ri) => ri.id);
         const idsNotInPayload = userRls.filter((ur) => !payloadRlsIds.includes(ur.id));
         if (idsNotInPayload && idsNotInPayload.length > 0) {
           for (const deleteId of idsNotInPayload) {
