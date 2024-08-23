@@ -377,7 +377,6 @@ export default function getRouter(basePath = '/') {
           const authStore = useAuthStore();
           if (authStore.authenticated) next('/');
           else {
-            console.log(to?.query?.idpHint);
             // If there's only one idpHint then log in using the specified IDP
             if (
               to?.query?.idpHint &&
