@@ -446,12 +446,15 @@ export default function getRouter(basePath = '/') {
 
       // Determine what kind of redirect behavior is needed
       let idpHint = undefined;
+      console.log(to.meta.requiresAuth);
+      console.log(idpStore);
       if (
         typeof to.meta.requiresAuth === 'string' &&
         to.meta.requiresAuth === 'primary'
       ) {
         idpHint = idpStore.primaryIdp ? idpStore.primaryIdp.code : null;
       }
+      console.log(idpHint);
       authStore.login(idpHint);
     }
 
