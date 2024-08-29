@@ -380,20 +380,26 @@ defineExpose({ RTL });
                 ></v-select>
               </v-col>
               <v-col cols="2" class="v-card-actions justify-center">
-                <v-btn
-                  icon
-                  size="24"
-                  :disabled="(!rls.field && !rls.value) || !rls.id"
-                  :loading="deletingRls"
-                  color="primary"
-                  @click="setFormId(index)"
-                >
-                  <v-icon
-                    size="16"
-                    color="white"
-                    icon="mdi:mdi-form-textbox"
-                  ></v-icon>
-                </v-btn>
+                <v-tooltip location="bottom">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon
+                      size="24"
+                      :disabled="(!rls.field && !rls.value) || !rls.id"
+                      :loading="deletingRls"
+                      color="primary"
+                      @click="setFormId(index)"
+                    >
+                      <v-icon
+                        size="16"
+                        color="white"
+                        icon="mdi:mdi-form-textbox"
+                      ></v-icon>
+                    </v-btn>
+                  </template>
+                  <span>Add Form ID and Name</span>
+                </v-tooltip>
                 <v-btn
                   v-if="rlsExist || (!rlsExist && index !== 0)"
                   icon
@@ -426,7 +432,7 @@ defineExpose({ RTL });
                 <div class="dialog-body" :class="{ 'dir-rtl': isRTL }">
                   <div>
                     <v-card-title class primary-title>
-                      Set CHEFS Form ID for pair<br />{{ rls.field }} -
+                      Set CHEFS Form ID and Name pair for<br />{{ rls.field }} -
                       {{ rls.value }}
                     </v-card-title>
                     <v-row>
