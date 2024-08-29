@@ -375,6 +375,8 @@ export default function getRouter(basePath = '/') {
           // Block navigation to login page if already authenticated
           NProgress.done();
           const authStore = useAuthStore();
+          console.log(to?.query);
+          console.log(authStore);
           if (authStore.authenticated) next('/');
           else {
             console.log(to?.query?.idpHint);
