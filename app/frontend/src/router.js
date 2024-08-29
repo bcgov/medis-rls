@@ -437,6 +437,10 @@ export default function getRouter(basePath = '/') {
     // Force login redirect if not authenticated
     // Note some pages (Submit and Success) only require auth if the form being loaded is secured
     // in those cases, see the beforeEnter navigation guards for auth loop determination
+    console.log(to.matched);
+    console.log(authStore.ready);
+    console.log(authStore.authenticated);
+    console.log(to.matched.some((route) => route.meta.requiresAuth));
     if (
       to.matched.some((route) => route.meta.requiresAuth) &&
       authStore.ready &&
