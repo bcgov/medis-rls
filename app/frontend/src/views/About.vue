@@ -1,7 +1,6 @@
 <script setup>
 import { useAuthStore } from '~/store/auth';
 import { useFormStore } from '~/store/form';
-import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 const authStore = useAuthStore();
@@ -9,9 +8,6 @@ const formStore = useFormStore();
 
 const { authenticated } = storeToRefs(authStore);
 const { isRTL, lang } = storeToRefs(formStore);
-
-const howToVideoUrl = computed(() => import.meta.env.VITE_HOWTOURL);
-const chefsTourVideoUrl = computed(() => import.meta.env.VITE_CHEFSTOURURL);
 </script>
 
 <template>
@@ -20,119 +16,26 @@ const chefsTourVideoUrl = computed(() => import.meta.env.VITE_CHEFSTOURURL);
       <v-row justify="center">
         <v-col lg="8">
           <h1 class="my-5 d-block" :locale="lang">
-            {{ $t('trans.homePage.title') }}
+            PCD BI Modernization Project: MEDIS RLS
           </h1>
-          <p :locale="lang">{{ $t('trans.homePage.subTitle') }}<br /></p>
+          <p :locale="lang">
+            The RLS (Row Level Security) service is a service that CHEFS forms
+            can use to apply data permissions to restrict the data users have
+            access to based on their group/organization. The RLS service also
+            provides an administrative UI interface for team managers to manage
+            users’ data permissions, and the submissions they have access to.
+          </p>
 
           <v-btn
-            :to="{ name: 'FormCreate' }"
+            :to="{ name: 'Login' }"
             class="mb-5"
             color="primary"
             data-test="create-or-login-btn"
           >
-            <span v-if="!authenticated" :locale="lang">{{
-              $t('trans.homePage.loginToStart')
-            }}</span>
+            <span v-if="!authenticated" :locale="lang">
+              Log in to get started
+            </span>
             <span v-else :locale="lang">{{
-              $t('trans.homePage.createFormLabel')
-            }}</span>
-          </v-btn>
-
-          <h2 id="video" class="pt-5" :locale="lang">
-            {{ $t('trans.homePage.takeATourOfChefs') }}
-          </h2>
-          <div class="video-wrapper">
-            <iframe
-              width="100%"
-              height="100%"
-              :src="chefsTourVideoUrl"
-              title="Introduction to the Common Hosted Forms Service (CHEFS)"
-              frameborder="0"
-              allowfullscreen
-            >
-            </iframe>
-          </div>
-        </v-col>
-      </v-row>
-    </v-sheet>
-
-    <v-row justify="center" class="example-text">
-      <v-col cols="12" lg="4">
-        <h2 :lang="lang">
-          {{ $t('trans.homePage.chefsHowToTitle') }}
-        </h2>
-        <p :lang="lang">
-          {{ $t('trans.homePage.chefsHowToSub') }}
-          <a :href="howToVideoUrl" target="_blank" :hreflang="lang"
-            >{{ $t('trans.homePage.getStarted') }}!</a
-          >
-        </p>
-      </v-col>
-      <v-col cols="12" lg="4">
-        <BaseImagePopout
-          alt="Drag and Drop demo"
-          src="https://raw.githubusercontent.com/wiki/bcgov/common-hosted-form-service/images/quickstart.png"
-          width="600px"
-          :lang="lang"
-        />
-      </v-col>
-    </v-row>
-
-    <v-row justify="center" class="example-text">
-      <v-col cols="12" lg="4">
-        <h2 :lang="lang">
-          {{ $t('trans.homePage.createCustomFormTitle') }}
-        </h2>
-        <p :lang="lang">
-          {{ $t('trans.homePage.createCustomFormSub1') }}
-        </p>
-      </v-col>
-      <v-col cols="12" lg="4">
-        <BaseImagePopout
-          alt="Drag and Drop demo"
-          src="https://raw.githubusercontent.com/wiki/bcgov/common-hosted-form-service/images/drag_drop.png"
-          width="600px"
-          :lang="lang"
-        />
-      </v-col>
-    </v-row>
-
-    <v-row justify="center" class="example-text">
-      <v-col cols="12" lg="4">
-        <h2 :lang="lang">
-          {{ $t('trans.homePage.manageAccessTitle') }}
-        </h2>
-        <p :lang="lang">
-          {{ $t('trans.homePage.manageAccessSub1') }}
-        </p>
-        <p :lang="lang">
-          {{ $t('trans.homePage.manageAccessSub2') }}
-        </p>
-      </v-col>
-      <v-col cols="12" lg="4">
-        <BaseImagePopout
-          alt="Export demo"
-          src="https://raw.githubusercontent.com/wiki/bcgov/common-hosted-form-service/images/team-management.png"
-          width="600px"
-          :lang="lang"
-        />
-      </v-col>
-    </v-row>
-
-    <v-sheet class="help-highlight pa-5 text-center">
-      <v-row justify="center">
-        <v-col lg="8">
-          <h3 class="mb-5" :lang="lang">
-            {{ $t('trans.homePage.getStartedToChefs') }}
-          </h3>
-          <p :lang="lang">
-            {{ $t('trans.homePage.createOnlineTitle') }}
-          </p>
-          <v-btn :to="{ name: 'FormCreate' }" class="mb-5" color="primary">
-            <span v-if="!authenticated" :lang="lang">{{
-              $t('trans.homePage.logInToGetStarted')
-            }}</span>
-            <span v-else :lang="lang">{{
               $t('trans.homePage.createFormLabel')
             }}</span>
           </v-btn>

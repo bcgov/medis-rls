@@ -34,7 +34,7 @@ export default function getRouter(basePath = '/') {
       {
         path: '/',
         name: 'Home',
-        redirect: { name: 'UserForms' },
+        redirect: { name: 'About' },
       },
       {
         path: '/',
@@ -375,11 +375,8 @@ export default function getRouter(basePath = '/') {
           // Block navigation to login page if already authenticated
           NProgress.done();
           const authStore = useAuthStore();
-          console.log(to?.query);
-          console.log(authStore);
           if (authStore.authenticated) next('/');
           else {
-            console.log(to?.query?.idpHint);
             // If there's only one idpHint then log in using the specified IDP
             if (
               to?.query?.idpHint &&
@@ -437,10 +434,6 @@ export default function getRouter(basePath = '/') {
     // Force login redirect if not authenticated
     // Note some pages (Submit and Success) only require auth if the form being loaded is secured
     // in those cases, see the beforeEnter navigation guards for auth loop determination
-    console.log(to.matched);
-    console.log(authStore.ready);
-    console.log(authStore.authenticated);
-    console.log(to.matched.some((route) => route.meta.requiresAuth));
     if (
       to.matched.some((route) => route.meta.requiresAuth) &&
       authStore.ready &&
@@ -452,15 +445,12 @@ export default function getRouter(basePath = '/') {
 
       // Determine what kind of redirect behavior is needed
       let idpHint = undefined;
-      console.log(to.meta.requiresAuth);
-      console.log(idpStore);
       if (
         typeof to.meta.requiresAuth === 'string' &&
         to.meta.requiresAuth === 'primary'
       ) {
         idpHint = idpStore.primaryIdp ? idpStore.primaryIdp.code : null;
       }
-      console.log(idpHint);
       authStore.login(idpHint);
     }
 
