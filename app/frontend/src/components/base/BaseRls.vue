@@ -129,10 +129,17 @@ const isCustomViewData = computed(
 const initRlsFields = computed(() => {
   let humanWords = [];
   if (isCustomViewData.value) {
-    humanWords = transformStrings(props.customViewData?.fields);
-    return props.customViewData?.fields?.map((f, i) => {
-      return { title: humanWords[i], value: f };
-    });
+    if (props.customViewName === 'ha_hierarchy') {
+      humanWords = HaCustomLabels();
+      return Object.keys(humanWords).map((key) => {
+        return { title: humanWords[key], value: key };
+      });
+    } else {
+      humanWords = transformStrings(props.customViewData?.fields);
+      return props.customViewData?.fields?.map((f, i) => {
+        return { title: humanWords[i], value: f };
+      });
+    }
   } else {
     humanWords = transformStrings(props.currentFormFields);
     return props.currentFormFields.map((f, i) => {
@@ -234,6 +241,19 @@ function transformStrings(array) {
     spaced = spaced.replace(/\b\w/g, (char) => char.toUpperCase());
     return spaced;
   });
+}
+
+function HaCustomLabels() {
+  return {
+    healthAuthority: 'Health Authority',
+    communityName: 'PCN Community',
+    pcnName: 'PCN Name',
+    pcnClinicName: 'PCN Clinic Name',
+    chcName: 'CHC Name',
+    upccName: 'UPCC Name',
+    fnpccName: 'FNPCC Name',
+    nppccName: 'NPPCC Name',
+  };
 }
 
 function addNewItem() {

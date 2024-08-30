@@ -27,7 +27,7 @@ const { isRTL, lang } = storeToRefs(formStore);
           </p>
 
           <v-btn
-            :to="{ name: 'Login' }"
+            :to="{ name: !authenticated ? 'Login' : 'UserForms' }"
             class="mb-5"
             color="primary"
             data-test="create-or-login-btn"
@@ -35,9 +35,7 @@ const { isRTL, lang } = storeToRefs(formStore);
             <span v-if="!authenticated" :locale="lang">
               Log in to get started
             </span>
-            <span v-else :locale="lang">{{
-              $t('trans.homePage.createFormLabel')
-            }}</span>
+            <span v-else :locale="lang">RLS Forms</span>
           </v-btn>
         </v-col>
       </v-row>
