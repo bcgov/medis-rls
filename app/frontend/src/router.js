@@ -34,7 +34,7 @@ export default function getRouter(basePath = '/') {
       {
         path: '/',
         name: 'Home',
-        redirect: { name: 'UserForms' },
+        redirect: { name: 'About' },
       },
       {
         path: '/',
