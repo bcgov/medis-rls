@@ -1,4 +1,4 @@
-name: CD builds and push to registry
+name: CD builds and push to OS registry
 
 # Controls when the action will run. Triggers the workflow on pull requestor push
 # events but only for the dev,test,prod branch
@@ -91,9 +91,9 @@ jobs:
           tls-verify: false
           build-args: |
             VUE_APP_FRONTEND_BASEPATH=${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
-            VITE_TITLE=${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
-            VITE_CONTACT=${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
-            VITE_FRONTEND_BASEPATH=${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
+            VITE_TITLE=${{ secrets.VUE_TITLE }}
+            VITE_CONTACT=${{ secrets.VUE_CONTACT }}
+            VITE_FRONTEND_BASEPATH=${{ secrets.VITE_FRONTEND_BASEPATH }}
             ENV_PATH=${{ secrets.ENV_PATH }}
           extra-args: --ulimit nofile=4096:4096
       # Push to specified registry
@@ -103,6 +103,6 @@ jobs:
         with:
           image: ${{ steps.build-static-image.outputs.image }}
           tags: ${{ steps.build-static-image.outputs.tags }}
-          registry: image-registry.apps.silver.devops.gov.bc.ca/${{ secrets.OCP_LICENSE }}-tools
+          registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOKEN }}
           password: ${{ secrets.OPENSHIFT_TOKEN }}
