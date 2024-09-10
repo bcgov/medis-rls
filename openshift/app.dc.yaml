@@ -3,40 +3,38 @@ apiVersion: template.openshift.io/v1
 kind: Template
 labels:
   app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "pcd-rls-dev"
+  app.kubernetes.io/instance: "medis-rls-dc"
   app.kubernetes.io/managed-by: kubectl
   app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "pcd-rls-dev"
-  app: "pcd-rls-dev"
-  template: "pcd-rls-app-dc-template"
+  app.kubernetes.io/part-of: "medis-rls-dc"
+  app: "medis-rls-dc"
+  template: "medis-rls-dc-template"
 metadata:
-  name: "pcd-rls-app-dc"
+  name: "medis-rls-dc"
 objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-${REPO_NAME}-app-${JOB_NAME}-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${APP_NAME}-app-${JOB_NAME}-to-rls-patroni-${ENVIRONMENT_NAME}-cluster"
     spec:
       # Allow app to talk to Patroni cluster
       ingress:
         - from:
             - podSelector:
                 matchLabels:
-                  app: "${REPO_NAME}-${JOB_NAME}"
-                  deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+                  app: "${APP_NAME}.${JOB_NAME}"
                   role: app
           ports:
             - port: 5432
               protocol: TCP
       podSelector:
         matchLabels:
-          cluster-name: "${JOB_NAME}"
-          statefulset: "patroni-${JOB_NAME}"
+          cluster-name: "rls-patroni-${ENVIRONMENT_NAME}"
           role: master
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
-      name: "allow-${REPO_NAME}-pre-hook-to-patroni-${JOB_NAME}-cluster"
+      name: "allow-${APP_NAME}-pre-hook-to-rls-patroni-${ENVIRONMENT_NAME}-cluster"
     spec:
       # Allow app pre-hook pods to talk to Patroni cluster
       ingress:
@@ -49,24 +47,21 @@ objects:
               protocol: TCP
       podSelector:
         matchLabels:
-          cluster-name: "${JOB_NAME}"
-          statefulset: "patroni-${JOB_NAME}"
+          cluster-name: "rls-patroni-${ENVIRONMENT_NAME}"
           role: master
-  - apiVersion: v1
-    kind: DeploymentConfig
+  - apiVersion: apps/v1
+    kind: Deployment
     metadata:
-      annotations:
-        app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"StatefulSet","name":"patroni-${JOB_NAME}"}]'
-      name: "${REPO_NAME}-app-${JOB_NAME}"
+      name: "${APP_NAME}-app-${JOB_NAME}"
     spec:
       replicas: ${{REPLICAS}}
       revisionHistoryLimit: 10
       selector:
-        app: "${REPO_NAME}-${JOB_NAME}"
-        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+        matchLabels:
+          app: "${APP_NAME}.${JOB_NAME}"
         role: app
       strategy:
-        type: Rolling
+        type: RollingUpdate
         resources: {}
         rollingParams:
           timeoutSeconds: 600
@@ -84,32 +79,31 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-rls-db-name
-                      name: "patroni-${JOB_NAME}-secret"
+                      key: app-db-name
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_HOST
-                  value: "patroni-${JOB_NAME}"
+                  value: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_USERNAME
                   valueFrom:
                     secretKeyRef:
                       key: app-db-username
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       key: app-db-password
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: SERVER_BASEPATH
                   value: "${ROUTE_PATH}"
       template:
         metadata:
           labels:
-            app: "${REPO_NAME}-${JOB_NAME}"
-            deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+            app: "${APP_NAME}.${JOB_NAME}"
             role: app
         spec:
           containers:
             - name: app
-              image: "${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${REPO_NAME}:${IMAGE_TAG}"
+              image: "${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${APP_NAME}:${JOB_NAME}"
               imagePullPolicy: IfNotPresent
               livenessProbe:
                 httpGet:
@@ -143,20 +137,20 @@ objects:
                 - name: DB_DATABASE
                   valueFrom:
                     secretKeyRef:
-                      key: app-rls-db-name
-                      name: "patroni-${JOB_NAME}-secret"
+                      key: app-db-name
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_HOST
-                  value: "patroni-${JOB_NAME}"
+                  value: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_USERNAME
                   valueFrom:
                     secretKeyRef:
                       key: app-db-username
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       key: app-db-password
-                      name: "patroni-${JOB_NAME}-secret"
+                      name: "rls-patroni-${ENVIRONMENT_NAME}"
                 - name: FRONTEND_BASEPATH
                   value: "${ROUTE_PATH}"
                 - name: VITE_FRONTEND_BASEPATH
@@ -165,7 +159,7 @@ objects:
                   valueFrom:
                     secretKeyRef:
                       key: email
-                      name: "${REPO_NAME}-contact-secret"
+                      name: "${APP_NAME}-contact-secret"
 
                 - name: VITE_HOWTOURL
                   valueFrom:
@@ -228,34 +222,34 @@ objects:
                   valueFrom:
                     secretKeyRef:
                       key: mailapitoken
-                      name: "chefs-${JOB_NAME}-secret"
+                      name: "${APP_NAME}-secret"
                 - name: WEBHOOK_SECRET
                   valueFrom:
                     secretKeyRef:
                       key: webhooksecret
-                      name: "${REPO_NAME}-secret"
+                      name: "${APP_NAME}-secret"
                 - name: EXTERNAL_API_KEY
                   valueFrom:
                     secretKeyRef:
                       key: externalapikey
-                      name: "${REPO_NAME}-secret"
+                      name: "${APP_NAME}-secret"
                 # - name: SERVER_LOGFILE
                 #   value: "/var/log/app.log"
               envFrom:
                 - configMapRef:
-                    name: "${REPO_NAME}-frontend-config"
+                    name: "medis-rls-frontend-config"
                 - configMapRef:
-                    name: "${APP_NAME}-sc-config"
+                    name: "medis-rls-sc-config"
                 - configMapRef:
-                    name: "${REPO_NAME}-server-config"
+                    name: "medis-rls-server-config"
                 - configMapRef:
-                    name: "${REPO_NAME}-service-config"
+                    name: "medis-rls-service-config"
                 - configMapRef:
-                    name: "${APP_NAME}-files-config"
+                    name: "medis-rls-files-config"
                 - configMapRef:
-                    name: "${REPO_NAME}-oidc-config"
+                    name: "medis-rls-oidc-config"
                 - configMapRef:
-                    name: "${APP_NAME}-custombcaddressformiocomponent-config"
+                    name: "medis-rls-custombcaddressformiocomponent-config"
           restartPolicy: Always
           terminationGracePeriodSeconds: 30
           volumes:
@@ -263,20 +257,19 @@ objects:
               emptyDir: {}
       test: false
       triggers:
-        - type: ConfigChange
-        # - imageChangeParams:
-        #     automatic: true
-        #     containerNames:
-        #       - app
-        #     from:
-        #       kind: ImageStreamTag
-        #       name: "${REPO_NAME}-app:${JOB_NAME}"
-        #       namespace: "${NAMESPACE}"
-        #   type: ImageChange
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - app
+            from:
+              kind: ImageStreamTag
+              namespace: ${IMAGE_NAMESPACE}
+              name: "${APP_NAME}:${JOB_NAME}"
   - apiVersion: v1
     kind: Service
     metadata:
-      name: "${REPO_NAME}-app-${JOB_NAME}"
+      name: "${APP_NAME}-app-${JOB_NAME}"
     spec:
       ports:
         - name: 8080-tcp
@@ -284,8 +277,7 @@ objects:
           protocol: TCP
           targetPort: 8080
       selector:
-        app: "${REPO_NAME}-${JOB_NAME}"
-        deploymentconfig: "${REPO_NAME}-app-${JOB_NAME}"
+        app: "${APP_NAME}.${JOB_NAME}"
         role: app
       sessionAffinity: None
 parameters:
@@ -301,30 +293,20 @@ parameters:
     description: Job identifier (i.e. 'pr-5' OR 'master')
     displayName: Job Branch Name
     required: true
+  - name: ENVIRONMENT_NAME
+    description: Environment name (i.e. 'dev' OR 'prod')
+    displayName: Environment Name
+    required: true
   - name: IMAGE_REGISTRY
     description: The container registry
-    displayName: Docker Image Registry
+    displayName: Image Registry
     required: true
     value: ghcr.io
   - name: IMAGE_NAMESPACE
     description: The image namespace
-    displayName: Docker Image Namespace
+    displayName: Image Namespace
     required: true
-    value: bcgov
-  - name: IMAGE_TAG
-    description: The specific image tag to deploy
-    displayName: Docker Image Tag
-    required: true
-    value: dev
-  - name: NAMESPACE
-    description: Target namespace reference (i.e. 'wfezkf-dev')
-    displayName: Target Namespace
-    required: true
-  - name: REPO_NAME
-    description: Application repository name
-    displayName: Repository Name
-    required: true
-    value: pcd-rls
+    value: bcgov-tools
   - name: CPU_LIMIT
     description: Limit Peak CPU per pod (in millicores ex. 1000m)
     displayName: CPU Limit
@@ -336,7 +318,7 @@ parameters:
   - name: MEMORY_LIMIT
     description: Limit Peak Memory per pod (in gigabytes Gi or megabytes Mi ex. 2Gi)
     displayName: Memory Limit
-    value: 1Gi
+    value: 512Mi
   - name: MEMORY_REQUEST
     description: Requested Memory per pod (in gigabytes Gi or megabytes Mi ex. 500Mi)
     displayName: Memory Request
