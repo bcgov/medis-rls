@@ -79,7 +79,7 @@ jobs:
           insecure_skip_tls_verify: true
 
           # Optional - this sets your Kubernetes context's current namespace after logging in.
-          namespace: ${{secrets.OPENSHIFT_TOOLS_SERVER}}
+          namespace: ${{secrets.OPENSHIFT_DEV_SERVER}}
       - name: Set variables
         shell: bash
         run: |
@@ -108,7 +108,7 @@ jobs:
         with:
           image: "medis-rls"
           tags: |
-            ${{ steps.extract_branch.outputs.branch == 'dev' && 'latest' || steps.extract_branch.outputs.branch}}
+            ${{ steps.extract_branch.outputs.branch}}
             ${{ env.SHA }}
           containerfiles: /Dockerfile
           tls-verify: false
@@ -125,3 +125,5 @@ jobs:
           registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOKEN }}
           password: ${{ secrets.OPENSHIFT_TOKEN }}
+      - name: Log in to Openshift
+        run: oc rollout restart deployment/medis-rls-app-${{ steps.extract_branch.outputs.branch}}
