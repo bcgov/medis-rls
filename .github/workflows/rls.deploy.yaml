@@ -107,7 +107,9 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: "medis-rls"
-          tags: ${{ steps.extract_branch.outputs.branch == 'dev' && 'latest' || steps.extract_branch.outputs.branch}}
+          tags: |
+            ${{ steps.extract_branch.outputs.branch == 'dev' && 'latest' || steps.extract_branch.outputs.branch}}
+            ${{ env.SHA }}
           containerfiles: /Dockerfile
           tls-verify: false
           extra-args: --ulimit nofile=4096:4096
@@ -119,7 +121,6 @@ jobs:
           image: ${{ steps.build-static-image.outputs.image }}
           tags: |
             ${{ steps.build-static-image.outputs.tags }}
-            ${{ env.IMAGE_VERSION }}
             ${{ env.SHA }}
           registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOKEN }}
