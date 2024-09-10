@@ -3,6 +3,9 @@ import { storeToRefs } from 'pinia';
 import { ref, computed, onMounted, watch } from 'vue';
 import BaseDialog from '~/components/base/BaseDialog.vue';
 import { useFormStore } from '~/store/form';
+import { NotificationTypes } from '~/utils/constants';
+import { useNotificationStore } from '~/store/notification';
+import { rlsService } from '~/services';
 
 const props = defineProps({
   modelValue: {
@@ -16,6 +19,10 @@ const props = defineProps({
   savingRls: {
     default: false,
     type: Boolean,
+  },
+  savingFormIds: {
+    default: () => [],
+    type: Array,
   },
   deletingRls: {
     default: false,
@@ -66,12 +73,14 @@ const emit = defineEmits([
   'delete-dialog',
   'custom-dialog',
   'delete-rls',
+  'save-form-id',
 ]);
 
 const localValues = ref([]);
 const localItemsToRls = ref([]);
+const initItemsToRls = ref([]);
 const showDeleteDialog = ref(false);
-const actionButtonDisabled = ref(false);
+const savingFormId = ref([false]);
 const showSetFormIdDialog = ref([false]);
 const currentIndex = ref(0);
 
@@ -87,22 +96,23 @@ const valueRules = ref([
   },
 ]);
 
-const requiredRules = ref([
-  (v) => {
-    if (!v) {
-      actionButtonDisabled.value = true;
-      return 'This field is required';
-    }
-    actionButtonDisabled.value = false;
-    return true;
-  },
-]);
+// const requiredRules = ref([
+//   (v) => {
+//     if (!v) {
+//       actionButtonDisabled.value = true;
+//       return 'This field is required';
+//     }
+//     actionButtonDisabled.value = false;
+//     return true;
+//   },
+// ]);
 
 onMounted(() => {
   initializeLocalItemsToRls();
 });
 
 const formStore = useFormStore();
+const notificationStore = useNotificationStore();
 const { isRTL, lang, submissionList } = storeToRefs(useFormStore());
 
 const RTL = computed(() => (isRTL.value ? 'ml-5' : 'mr-5'));
@@ -119,10 +129,17 @@ const isCustomViewData = computed(
 const initRlsFields = computed(() => {
   let humanWords = [];
   if (isCustomViewData.value) {
-    humanWords = transformStrings(props.customViewData?.fields);
-    return props.customViewData?.fields?.map((f, i) => {
-      return { title: humanWords[i], value: f };
-    });
+    if (props.customViewName === 'ha_hierarchy') {
+      humanWords = HaCustomLabels();
+      return Object.keys(humanWords).map((key) => {
+        return { title: humanWords[key], value: key };
+      });
+    } else {
+      humanWords = transformStrings(props.customViewData?.fields);
+      return props.customViewData?.fields?.map((f, i) => {
+        return { title: humanWords[i], value: f };
+      });
+    }
   } else {
     humanWords = transformStrings(props.currentFormFields);
     return props.currentFormFields.map((f, i) => {
@@ -163,6 +180,7 @@ const initializeLocalItemsToRls = () => {
       },
     ];
   }
+  initItemsToRls.value = JSON.parse(JSON.stringify(localItemsToRls.value));
 };
 
 const onFieldUpdate = async (index) => {
@@ -225,6 +243,19 @@ function transformStrings(array) {
   });
 }
 
+function HaCustomLabels() {
+  return {
+    healthAuthority: 'Health Authority',
+    communityName: 'PCN Community',
+    pcnName: 'PCN Name',
+    pcnClinicName: 'PCN Clinic Name',
+    chcName: 'CHC Name',
+    upccName: 'UPCC Name',
+    fnpccName: 'FNPCC Name',
+    nppccName: 'NPPCC Name',
+  };
+}
+
 function addNewItem() {
   localItemsToRls.value.push({
     id: null,
@@ -237,6 +268,11 @@ function addNewItem() {
 }
 
 function closeDialog() {
+  initItemsToRls.value.map((rls, index) => {
+    localItemsToRls.value[index].field = rls.field;
+    localItemsToRls.value[index].value = rls.value;
+    return true;
+  });
   emit('close-dialog');
 }
 
@@ -265,10 +301,48 @@ function setFormId(index) {
   showSetFormIdDialog.value[index] = true;
 }
 
-function deleteFormId(index) {
-  localItemsToRls.value[index].remoteFormId = null;
-  localItemsToRls.value[index].remoteFormName = null;
+function cancelFormId(index) {
+  localItemsToRls.value[index].remoteFormId =
+    initItemsToRls.value[index]?.remoteFormId;
+  localItemsToRls.value[index].remoteFormName =
+    initItemsToRls.value[index]?.remoteFormName;
   showSetFormIdDialog.value[index] = false;
+}
+
+async function saveFormId(index, deleting = false) {
+  savingFormId.value[index] = true;
+  try {
+    if (deleting) {
+      localItemsToRls.value[index].remoteFormId = null;
+      localItemsToRls.value[index].remoteFormName = null;
+    }
+    const payload = {
+      rlsItems: localItemsToRls.value,
+      customViewName: props.customViewName,
+      updating: true,
+    };
+    const rlsUsers = props.itemsToRls.map((u) => {
+      return { id: u.id };
+    });
+    const rlsPayload = Object.assign({ users: rlsUsers }, payload);
+    await rlsService.setRlsForms(rlsPayload, { formId: props.currentFormId });
+    notificationStore.addNotification({
+      text: 'Form ID/Name has been successfully assigned',
+      ...NotificationTypes.SUCCESS,
+    });
+  } catch (error) {
+    notificationStore.addNotification({
+      text: 'Something went wrong while saving Form ID/Name',
+      ...NotificationTypes.ERROR,
+    });
+    localItemsToRls.value[index].remoteFormId =
+      initItemsToRls.value[index]?.remoteFormId;
+    localItemsToRls.value[index].remoteFormName =
+      initItemsToRls.value[index]?.remoteFormName;
+  }
+  savingFormId.value[index] = false;
+  showSetFormIdDialog.value[index] = false;
+  initItemsToRls.value = JSON.parse(JSON.stringify(localItemsToRls.value));
 }
 
 watch(() => props.itemsToRls, initializeLocalItemsToRls, { deep: true });
@@ -326,20 +400,26 @@ defineExpose({ RTL });
                 ></v-select>
               </v-col>
               <v-col cols="2" class="v-card-actions justify-center">
-                <v-btn
-                  icon
-                  size="24"
-                  :disabled="!rls.field && !rls.value"
-                  :loading="deletingRls"
-                  color="primary"
-                  @click="setFormId(index)"
-                >
-                  <v-icon
-                    size="16"
-                    color="white"
-                    icon="mdi:mdi-form-textbox"
-                  ></v-icon>
-                </v-btn>
+                <v-tooltip location="bottom">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon
+                      size="24"
+                      :disabled="(!rls.field && !rls.value) || !rls.id"
+                      :loading="deletingRls"
+                      color="primary"
+                      @click="setFormId(index)"
+                    >
+                      <v-icon
+                        size="16"
+                        color="white"
+                        icon="mdi:mdi-form-textbox"
+                      ></v-icon>
+                    </v-btn>
+                  </template>
+                  <span>Add Form ID and Name</span>
+                </v-tooltip>
                 <v-btn
                   v-if="rlsExist || (!rlsExist && index !== 0)"
                   icon
@@ -372,21 +452,21 @@ defineExpose({ RTL });
                 <div class="dialog-body" :class="{ 'dir-rtl': isRTL }">
                   <div>
                     <v-card-title class primary-title>
-                      Set CHEFS Form ID for pair<br />{{ rls.field }} -
+                      Set CHEFS Form ID and Name pair for<br />{{ rls.field }} -
                       {{ rls.value }}
                     </v-card-title>
                     <v-row>
                       <v-col cols="6">
                         <v-text-field
                           v-model="rls.remoteFormId"
-                          :rules="requiredRules"
+                          hint="For exp: 07f9be84-7c28-4ae5-a01a-0ef84b12fb7b"
+                          persistent-hint
                           label="Form ID"
                         ></v-text-field>
                       </v-col>
                       <v-col cols="6">
                         <v-text-field
                           v-model="rls.remoteFormName"
-                          :rules="requiredRules"
                           label="Form Name"
                         ></v-text-field>
                       </v-col>
@@ -397,15 +477,10 @@ defineExpose({ RTL });
                   <v-btn
                     class="mb-5 mr-5"
                     :class="RTL"
-                    :disabled="
-                      rls.remoteFormId === null ||
-                      rls.remoteFormName === null ||
-                      rls.remoteFormId === '' ||
-                      rls.remoteFormName === ''
-                    "
                     color="primary"
+                    :loading="savingFormId[index]"
                     variant="flat"
-                    @click="showSetFormIdDialog[index] = false"
+                    @click="saveFormId(index)"
                   >
                     <slot name="button-text-continue">
                       <span :lang="lang">Save</span>
@@ -413,15 +488,10 @@ defineExpose({ RTL });
                   </v-btn>
                   <v-btn
                     class="mb-5"
-                    :disabled="
-                      rls.remoteFormId === null ||
-                      rls.remoteFormName === null ||
-                      rls.remoteFormId === '' ||
-                      rls.remoteFormName === ''
-                    "
                     color="red"
+                    :loading="savingFormId[index]"
                     variant="flat"
-                    @click="deleteFormId(index)"
+                    @click="saveFormId(index, true)"
                   >
                     Delete
                   </v-btn>
@@ -429,7 +499,7 @@ defineExpose({ RTL });
                     data-test="saveddelete-btn-cancel"
                     class="mb-5"
                     variant="outlined"
-                    @click="showSetFormIdDialog[index] = false"
+                    @click="cancelFormId(index)"
                   >
                     <slot name="button-text-delete">
                       <span :lang="lang">Cancel</span>

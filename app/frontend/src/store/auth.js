@@ -125,6 +125,7 @@ export const useAuthStore = defineStore('auth', {
           redirectUri: this.redirectUri,
         };
 
+        console.log(idpHint);
         // Determine idpHint based on input or form
         if (idpHint && typeof idpHint === 'string') options.idpHint = idpHint;
 

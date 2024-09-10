@@ -311,6 +311,13 @@ export default {
       }
     },
 
+    async cancelRls() {
+      this.showRLSDialog = false;
+      // refresh the table and rls stuff
+      await this.getRlsUsers();
+      this.createTableData();
+    },
+
     createTableData() {
       this.tableData = this.formUsers.map((user) => {
         const row = {
@@ -862,7 +869,7 @@ export default {
       :rls-exist="rlsExist"
       :custom-view-name="form.custom_view_name"
       :custom-view-data="formCustomViewData"
-      @close-dialog="showRLSDialog = false"
+      @close-dialog="cancelRls"
       @continue-dialog="saveRls"
       @delete-rls="deleteRls"
     >

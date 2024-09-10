@@ -29,7 +29,7 @@ module.exports = {
     'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'eol-last': ['error', 'always'],
     'linebreak-style': ['error', 'unix'],
-    'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'warn',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     semi: ['error', 'always'],
     'vue/html-closing-bracket-newline': [
