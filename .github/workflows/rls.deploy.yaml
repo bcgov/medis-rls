@@ -89,8 +89,8 @@ jobs:
       - name: Creates env variables
         env:
           VUE_APP_FRONTEND_BASEPATH: ${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
-          VITE_TITLE: ${{ secrets.VUE_TITLE }}
-          VITE_CONTACT: ${{ secrets.VUE_CONTACT }}
+          VITE_TITLE: ${{ secrets.VITE_TITLE }}
+          VITE_CONTACT: ${{ secrets.VITE_CONTACT }}
           VITE_FRONTEND_BASEPATH: ${{ secrets.VITE_FRONTEND_BASEPATH }}
           ENV_PATH: ./app/frontend/.env
         shell: bash
@@ -119,8 +119,8 @@ jobs:
           image: ${{ steps.build-static-image.outputs.image }}
           tags: |
             ${{ steps.build-static-image.outputs.tags }}
-            type=raw,value=${{ env.IMAGE_VERSION }}
-            type=raw,value=${{ env.SHA }}
+            ${{ env.IMAGE_VERSION }}
+            ${{ env.SHA }}
           registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOKEN }}
           password: ${{ secrets.OPENSHIFT_TOKEN }}
