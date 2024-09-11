@@ -3,14 +3,14 @@ apiVersion: template.openshift.io/v1
 kind: Template
 labels:
   app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "medis-rls-dc"
+  app.kubernetes.io/instance: "medis-rls"
   app.kubernetes.io/managed-by: kubectl
   app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "medis-rls-dc"
-  app: "medis-rls-dc"
-  template: "medis-rls-dc-template"
+  app.kubernetes.io/part-of: "medis-rls"
+  app: "medis-rls"
+  template: "medis-rls-template"
 metadata:
-  name: "medis-rls-dc"
+  name: "medis-rls"
 objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
