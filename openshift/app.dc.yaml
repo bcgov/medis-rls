@@ -3,14 +3,14 @@ apiVersion: template.openshift.io/v1
 kind: Template
 labels:
   app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "medis-rls-dc"
+  app.kubernetes.io/instance: "medis-rls"
   app.kubernetes.io/managed-by: kubectl
   app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "medis-rls-dc"
-  app: "medis-rls-dc"
-  template: "medis-rls-dc-template"
+  app.kubernetes.io/part-of: "medis-rls"
+  app: "medis-rls"
+  template: "medis-rls-template"
 metadata:
-  name: "medis-rls-dc"
+  name: "medis-rls"
 objects:
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
@@ -65,36 +65,36 @@ objects:
         resources: {}
         rollingParams:
           timeoutSeconds: 600
-          pre:
-            failurePolicy: Retry
-            execNewPod:
-              command:
-                - npm
-                - run
-                - migrate
-              containerName: "app"
-              env:
-                - name: NODE_ENV
-                  value: production
-                - name: DB_DATABASE
-                  valueFrom:
-                    secretKeyRef:
-                      key: app-db-name
-                      name: "rls-patroni-${ENVIRONMENT_NAME}"
-                - name: DB_HOST
-                  value: "rls-patroni-${ENVIRONMENT_NAME}"
-                - name: DB_USERNAME
-                  valueFrom:
-                    secretKeyRef:
-                      key: app-db-username
-                      name: "rls-patroni-${ENVIRONMENT_NAME}"
-                - name: DB_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      key: app-db-password
-                      name: "rls-patroni-${ENVIRONMENT_NAME}"
-                - name: SERVER_BASEPATH
-                  value: "${ROUTE_PATH}"
+          # pre:
+          #   failurePolicy: Retry
+          #   execNewPod:
+          #     command:
+          #       - npm
+          #       - run
+          #       - migrate
+          #     containerName: "app"
+          #     env:
+          #       - name: NODE_ENV
+          #         value: production
+          #       - name: DB_DATABASE
+          #         valueFrom:
+          #           secretKeyRef:
+          #             key: app-db-name
+          #             name: "rls-patroni-${ENVIRONMENT_NAME}"
+          #       - name: DB_HOST
+          #         value: "rls-patroni-${ENVIRONMENT_NAME}"
+          #       - name: DB_USERNAME
+          #         valueFrom:
+          #           secretKeyRef:
+          #             key: app-db-username
+          #             name: "rls-patroni-${ENVIRONMENT_NAME}"
+          #       - name: DB_PASSWORD
+          #         valueFrom:
+          #           secretKeyRef:
+          #             key: app-db-password
+          #             name: "rls-patroni-${ENVIRONMENT_NAME}"
+          #       - name: SERVER_BASEPATH
+          #         value: "${ROUTE_PATH}"
       template:
         metadata:
           labels:
