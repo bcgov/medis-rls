@@ -78,9 +78,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: "medis-rls"
-          tags: |
-            ${{ steps.extract_branch.outputs.branch}}
-            ${{ env.SHA }}
+          tags: ${{ steps.extract_branch.outputs.branch}}
           containerfiles: /Dockerfile
           tls-verify: false
           extra-args: --ulimit nofile=4096:4096
@@ -90,9 +88,9 @@ jobs:
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-static-image.outputs.image }}
-          tags: |
-            ${{ steps.build-static-image.outputs.tags }}
-            ${{ env.SHA }}
+          tags: ${{ steps.build-static-image.outputs.tags }}
+          labels: |
+            app=medis-rls
           registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
           password: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
@@ -117,4 +115,4 @@ jobs:
           # Optional - this sets your Kubernetes context's current namespace after logging in.
           namespace: ${{secrets.OPENSHIFT_NAMESPACE}}
       - name: Start new rollout
-        run: oc -n ${{secrets.OPENSHIFT_NAMESPACE}} rollout restart deployment/medis-rls-app-${{ steps.extract_branch.outputs.branch}}
+        run: oc -n ${{secrets.OPENSHIFT_NAMESPACE}} rollout restart deployment/medis-rls-app-${{ steps.extract_branch.outputs.branch == 'main' && 'prod' || steps.extract_branch.outputs.branch }}
