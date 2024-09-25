@@ -14,7 +14,15 @@ routes.use('/submissions', (req, res, next) => {
         apikeyIncome = apikeyIncome.split(':')[0];
       }
       req.extFormApiKey = extFormApiKey;
-      if (apikeyEnv == apikeyIncome && (apikeyIncome == undefined || apikeyIncome == '')) return res.status(401).json({ message: 'No API key provided' });
+      // eslint-disable-next-line no-console
+      console.log('!============= apikeyEnv: ', apikeyEnv);
+      // eslint-disable-next-line no-console
+      console.log('!============= apikeyIncome: ', apikeyIncome);
+      // eslint-disable-next-line no-console
+      console.log('!============= extFormApiKey: ', extFormApiKey);
+      if (apikeyIncome === undefined || apikeyIncome === '' || !apikeyIncome) {
+        return res.status(401).json({ message: 'No API key provided' });
+      }
       if (apikeyIncome === apikeyEnv) {
         next();
       } else {
