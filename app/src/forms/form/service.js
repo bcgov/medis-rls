@@ -385,7 +385,10 @@ const service = {
 
   listFormSubmissions: async (formId, params, currentUser, remoteFormId = null, remoteCall = false) => {
     // getting rls for this form and user who is calling api
-    let rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
+    let rls = [];
+    if (formId && currentUser && currentUser.id) {
+      rls = await FormRls.query().modify('filterFormId', formId).modify('filterUserId', currentUser?.id);
+    }
     const isRls = rls && rls.length > 0 && params.noRls !== 'true';
     const isNestedPath = rls && rls?.field && rls?.value && rls?.nestedPath !== null;
 
