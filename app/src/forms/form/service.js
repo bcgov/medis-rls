@@ -483,9 +483,13 @@ const service = {
     } else {
       const noFields = ['lateEntry'];
       if (isRls) {
-        noFields.push(rls.field);
+        rls.forEach(({ field }) => {
+          noFields.push(field);
+        });
         if (isNestedPath) {
-          noFields.push(rls.nestedPath.split(',')[0]);
+          rls.forEach((r) => {
+            noFields.push(r.nestedPath.split(',')[0]);
+          });
         }
       }
       query.select(
