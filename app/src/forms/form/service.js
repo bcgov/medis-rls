@@ -430,7 +430,7 @@ const service = {
             if (index === 0) {
               this.whereRaw(`submission #>> '{data,${field}}' = '${value}'`);
             } else {
-              this.orWhereRaw(`or submission #>> '{data,${field}}' = '${value}'`);
+              this.orWhereRaw(`submission #>> '{data,${field}}' = '${value}'`);
             }
           });
         });
