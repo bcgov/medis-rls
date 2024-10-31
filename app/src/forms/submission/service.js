@@ -91,7 +91,7 @@ const service = {
 
   readSubmissionData: (formSubmissionIds) => service._fetchSpecificSubmissionData(formSubmissionIds),
 
-  update: async (formSubmissionId, data, currentUser, referrer, etrx = undefined) => {
+  update: async (formSubmissionId, data, currentUser, referrer, etrx = undefined, ess = false) => {
     let trx;
     try {
       trx = etrx ? etrx : await FormSubmission.startTransaction();
@@ -101,7 +101,7 @@ const service = {
         await FormSubmission.query(trx).patchAndFetchById(formSubmissionId, { deleted: data.deleted, updatedBy: currentUser.usernameIdp });
       } else {
         const statuses = await FormSubmissionStatus.query().modify('filterSubmissionId', formSubmissionId).modify('orderDescending');
-        if (!data.draft) {
+        if (!data.draft && !ess) {
           // Write a SUBMITTED status only if this is in REVISING state OR is a brand new submission
           if (!statuses || !statuses.length || statuses[0].code === Statuses.REVISING) {
             await service.changeStatusState(formSubmissionId, { code: Statuses.SUBMITTED }, currentUser, trx);
@@ -111,7 +111,7 @@ const service = {
             eventService.formSubmissionEventReceived(submissionMetaData.formId, submissionMetaData.formVersionId, formSubmissionId, data);
           }
         } else {
-          if (statuses && statuses.length > 0 && (statuses[0].code === Statuses.SUBMITTED || statuses[0].code === Statuses.COMPLETED)) {
+          if (!ess && statuses && statuses.length > 0 && (statuses[0].code === Statuses.SUBMITTED || statuses[0].code === Statuses.COMPLETED)) {
             return false;
           }
         }
