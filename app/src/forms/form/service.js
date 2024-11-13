@@ -374,9 +374,22 @@ const service = {
         return true;
       });
     }
-    const data = await query;
+    let data = await query;
     let fields = [];
     if (data && data.length > 0) {
+      if (viewName === 'ha_hierarchy') {
+        const com = rlsRes.filter((r) => r.field === 'communityName' || r.field === 'pcnName' || r.field === 'pcnClinicName');
+        if (com && com.length > 0) {
+          data = data.map((d) => {
+            d.upccName = null;
+            d.upccTypeOfCare = null;
+            d.nppccName = null;
+            d.fnpccName = null;
+            d.chcName = null;
+            return d;
+          });
+        }
+      }
       fields = Object.keys(data[0]);
       fields = fields?.filter((f) => f !== 'formId' && f !== 'id').map((f) => f);
     }
