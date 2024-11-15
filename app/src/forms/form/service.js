@@ -380,12 +380,15 @@ const service = {
       if (viewName === 'ha_hierarchy') {
         const com = rlsRes.filter((r) => r.field === 'communityName' || r.field === 'pcnName' || r.field === 'pcnClinicName');
         if (com && com.length > 0) {
+          const comValues = com.map((c) => c.value);
           data = data.map((d) => {
-            d.upccName = null;
-            d.upccTypeOfCare = null;
-            d.nppccName = null;
-            d.fnpccName = null;
-            d.chcName = null;
+            if (comValues.includes(d?.communityName) || comValues.includes(d?.pcnName) || comValues.includes(d?.pcnClinicName)) {
+              d.upccName = null;
+              d.upccTypeOfCare = null;
+              d.nppccName = null;
+              d.fnpccName = null;
+              d.chcName = null;
+            }
             return d;
           });
         }
