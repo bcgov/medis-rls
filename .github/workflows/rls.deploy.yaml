@@ -114,5 +114,3 @@ jobs:
 
           # Optional - this sets your Kubernetes context's current namespace after logging in.
           namespace: ${{secrets.OPENSHIFT_NAMESPACE}}
-      - name: Start new rollout
-        run: oc -n ${{secrets.OPENSHIFT_NAMESPACE}} rollout restart deployment/medis-rls-app-${{ steps.extract_branch.outputs.branch == 'main' && 'prod' || steps.extract_branch.outputs.branch }}
