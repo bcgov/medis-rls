@@ -59,7 +59,7 @@ jobs:
           echo "IMAGE_VERSION=main" >> $GITHUB_ENV
       - name: Creates env variables
         env:
-          VUE_APP_FRONTEND_BASEPATH: ${{ vars.VUE_APP_FRONTEND_BASEPATH }}
+          VUE_APP_FRONTEND_BASEPATH: ${{ vars.VUE_APP_FRONTEND_BASEPATH  }}
           VITE_TITLE: ${{ vars.VITE_TITLE }}
           VITE_CONTACT: ${{ vars.VITE_CONTACT }}
           VITE_FRONTEND_BASEPATH: ${{ vars.VITE_FRONTEND_BASEPATH }}
@@ -89,8 +89,6 @@ jobs:
         with:
           image: ${{ steps.build-static-image.outputs.image }}
           tags: ${{ steps.build-static-image.outputs.tags }}
-          labels: |
-            app=medis-rls
           registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
           username: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
           password: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
