@@ -1,37 +1,82 @@
 ---
-apiVersion: template.openshift.io/v1
-kind: Template
-labels:
-  app.kubernetes.io/component: app
-  app.kubernetes.io/instance: "${APP_NAME}-${JOB_NAME}"
-  app.kubernetes.io/managed-by: github
-  app.kubernetes.io/name: nodejs
-  app.kubernetes.io/part-of: "${APP_NAME}-${JOB_NAME}"
-  app: "${APP_NAME}-${JOB_NAME}"
-  template: "chefs-app-cm-template"
+kind: ConfigMap
+apiVersion: v1
 metadata:
-  name: "chefs-app-cm"
-objects:
-  - apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: "${APP_NAME}-service-config"
-    data:
-      SERVER_HOST: ${SERVER_HOST}
-parameters:
-  - name: APP_NAME
-    description: Application name
-    displayName: Application name
-    required: true
-  - name: JOB_NAME
-    description: Job identifier (i.e. 'pr-5' OR 'master')
-    displayName: Job Branch Name
-    required: true
-  - name: SERVER_HOST
-    description: Server domain to be used by end users
-    displayName: Application name
-    required: true
-  - name: NAMESPACE
-    description: Target namespace reference (i.e. 'wfezkf-dev')
-    displayName: Target Namespace
-    required: true
+  name: medis-rls-custombcaddressformiocomponent-config
+data:
+  example.property.1: hello
+  example.property.2: world
+  example.property.file: |-
+    property.1=value-1
+    property.2=value-2
+    property.3=value-3
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-files-config
+data:
+  FILES_OBJECTSTORAGE_ENDPOINT:
+  FILES_UPLOADS_FILEMINSIZE:
+  FILES_PERMANENT:
+  FILES_UPLOADS_ENABLED:
+  FILES_LOCALSTORAGE_PATH:
+  FILES_UPLOADS_FILEKEY:
+  FILES_OBJECTSTORAGE_KEY:
+  FILES_UPLOADS_FILEMAXSIZE:
+  FILES_OBJECTSTORAGE_BUCKET:
+  FILES_UPLOADS_DIR:
+  FILES_UPLOADS_PATH:
+  FILES_UPLOADS_FILECOUNT:
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-frontend-config
+data:
+  FRONTEND_APIPATH: api/v1
+  VITE_ADMIN_DASHBOARD_URL: ""
+  VITE_FRONTEND_BASEPATH: /app
+  VITE_TITLE: MEDIS RLS
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-oidc-config
+data:
+  OIDC_CLIENTID:
+  OIDC_ISSUER:
+  OIDC_JWKSURI:
+  OIDC_LOGOUTURL:
+  OIDC_MAXTOKENAGE:
+  OIDC_REALM:
+  OIDC_SERVERURL:
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-sc-config
+data:
+  SC_CS_CDOGS_ENDPOINT: "https://cdogs-test.apps.silver.devops.gov.bc.ca/api"
+  SC_CS_CHES_ENDPOINT: "https://ches-test.apps.silver.devops.gov.bc.ca/api"
+  SC_CS_TOKEN_ENDPOINT:
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-server-config
+immutable: false
+data:
+  SERVER_APIPATH: /api/v1
+  SERVER_BASEPATH: /app
+  SERVER_BODYLIMIT: 30mb
+  SERVER_LOGLEVEL: http
+  SERVER_PORT: "8080"
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: medis-rls-service-config
+immutable: false
+data:
+  SERVER_HOST:
