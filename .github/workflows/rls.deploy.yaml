@@ -4,16 +4,6 @@ name: CD builds and push to OS registry
 # events but only for the dev,test,prod branch
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Environment name; choose dev for PR
-        required: true
-        type: choice
-        options:
-          - develop
-          - test
-        default: develop
-  pull_request:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 # if we use the matrix strategy
@@ -31,7 +21,7 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     needs: get-branch-name
-    environment: ${{ needs.get-branch-name.outputs.branch }}
+    environment: ${{ needs.get-branch-name.outputs.branch == 'main' && 'prod' || needs.get-branch-name.outputs.branch }}
     steps:
       - name: Extract branch name
         shell: bash
@@ -61,10 +51,53 @@ jobs:
           # Since all node modules is stored in the main directory, we need to
           # use the package-lock.json from the main directory
           cache-dependency-path: "./app/package-lock.json"
-      - name: Install oc v3
+      - name: Set variables
+        shell: bash
+        run: |
+          echo "SHA=sha-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "IMAGE_REVISION=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=main" >> $GITHUB_ENV
+      - name: Creates env variables
+        env:
+          VUE_APP_FRONTEND_BASEPATH: ${{ vars.VUE_APP_FRONTEND_BASEPATH }}
+          VITE_TITLE: ${{ vars.VITE_TITLE }}
+          VITE_CONTACT: ${{ vars.VITE_CONTACT }}
+          VITE_FRONTEND_BASEPATH: ${{ vars.VITE_FRONTEND_BASEPATH }}
+          ENV_PATH: ./app/frontend/.env
+        shell: bash
+        run: |
+          touch $ENV_PATH
+          echo VITE_TITLE=$VITE_TITLE >> $ENV_PATH
+          echo VITE_CONTACT=$VITE_CONTACT >> $ENV_PATH
+          echo VITE_FRONTEND_BASEPATH=$VITE_FRONTEND_BASEPATH >> $ENV_PATH
+
+          echo "cat $ENV_PATH"
+          cat $ENV_PATH
+      - name: Building image
+        id: build-static-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: "medis-rls"
+          tags: ${{ steps.extract_branch.outputs.branch}}
+          containerfiles: /Dockerfile
+          tls-verify: false
+          extra-args: --ulimit nofile=4096:4096
+      # Push to specified registry
+      - name: Push Static To OpenShift Image repo
+        id: push-to-os-static
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-static-image.outputs.image }}
+          tags: ${{ steps.build-static-image.outputs.tags }}
+          labels: |
+            app=medis-rls
+          registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
+          username: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
+          password: ${{ secrets.OPENSHIFT_TOOLS_TOKEN }}
+      - name: Install oc v4
         uses: redhat-actions/openshift-tools-installer@v1
         with:
-          oc: 3
+          oc: 4
       - name: Authenticate and set context
         uses: redhat-actions/oc-login@v1
         with:
@@ -80,30 +113,6 @@ jobs:
           insecure_skip_tls_verify: true
 
           # Optional - this sets your Kubernetes context's current namespace after logging in.
-          namespace: ${{secrets.OPENSHIFT_TOOLS_SERVER}}
-      # Build image
-      - name: Building image
-        id: build-static-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: "medis-rls"
-          tags: ${{ steps.extract_branch.outputs.branch == 'dev' && 'latest' || steps.extract_branch.outputs.branch}}
-          containerfiles: /Dockerfile
-          tls-verify: false
-          build-args: |
-            VUE_APP_FRONTEND_BASEPATH=${{ secrets.VUE_APP_FRONTEND_BASEPATH }}
-            VITE_TITLE=${{ secrets.VUE_TITLE }}
-            VITE_CONTACT=${{ secrets.VUE_CONTACT }}
-            VITE_FRONTEND_BASEPATH=${{ secrets.VITE_FRONTEND_BASEPATH }}
-            ENV_PATH=${{ secrets.ENV_PATH }}
-          extra-args: --ulimit nofile=4096:4096
-      # Push to specified registry
-      - name: Push Static To OpenShift Image repo
-        id: push-to-os-static
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-static-image.outputs.image }}
-          tags: ${{ steps.build-static-image.outputs.tags }}
-          registry: image-registry.apps.silver.devops.gov.bc.ca/${{secrets.OPENSHIFT_TOOLS_SERVER}}
-          username: ${{ secrets.OPENSHIFT_TOKEN }}
-          password: ${{ secrets.OPENSHIFT_TOKEN }}
+          namespace: ${{secrets.OPENSHIFT_NAMESPACE}}
+      - name: Start new rollout
+        run: oc -n ${{secrets.OPENSHIFT_NAMESPACE}} rollout restart deployment/medis-rls-app-${{ steps.extract_branch.outputs.branch == 'main' && 'prod' || steps.extract_branch.outputs.branch }}
