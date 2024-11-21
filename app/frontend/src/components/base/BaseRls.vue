@@ -83,6 +83,7 @@ const showDeleteDialog = ref(false);
 const savingFormId = ref([false]);
 const showSetFormIdDialog = ref([false]);
 const currentIndex = ref(0);
+const nonCustomViewInitLoad = ref(false);
 
 const currentFieldRules = ref([
   (v) => {
@@ -148,13 +149,13 @@ const initRlsFields = computed(() => {
   }
 });
 
-const initializeLocalItemsToRls = () => {
+const initializeLocalItemsToRls = async () => {
   if (
     Array.isArray(props.itemsToRls[0]?.rls) &&
     props.itemsToRls[0]?.rls.length > 0
   ) {
-    localItemsToRls.value = props.itemsToRls[0].rls.map((rls, index) => {
-      if (isCustomViewData.value) {
+    if (isCustomViewData.value) {
+      localItemsToRls.value = props.itemsToRls[0].rls.map((rls, index) => {
         const tempValues = props.customViewData?.data.map((v) => v[rls.field]);
         const uniqueValues = [...new Set(tempValues)].sort();
         localValues.value[index] = uniqueValues
@@ -165,9 +166,17 @@ const initializeLocalItemsToRls = () => {
               (typeof lv === 'string' || lv instanceof String)
           )
           .map((lv) => ({ title: lv, value: lv }));
-      }
-      return { ...rls }; // Ensure a new object is returned to avoid reference issues
-    });
+        return { ...rls }; // Ensure a new object is returned to avoid reference issues
+      });
+    } else {
+      nonCustomViewInitLoad.value = true;
+      const criteria = {
+        formId: props.currentFormId,
+        formFields: props.currentFormFields,
+        noRls: true,
+      };
+      await formStore.fetchSubmissions(criteria);
+    }
   } else {
     localItemsToRls.value = [
       {
@@ -216,20 +225,37 @@ const onFieldUpdate = async (index) => {
 
 watch(submissionList, async (newSubmissionList) => {
   if (newSubmissionList && newSubmissionList.length > 0) {
-    const selectedField = localItemsToRls.value[currentIndex.value].field;
-    if (selectedField) {
-      localItemsToRls.value[currentIndex.value].value = null;
-      localValues.value[currentIndex.value] = [];
-      const tempValues = newSubmissionList.map((v) => v[selectedField]);
-      const uniqueValues = [...new Set(tempValues)].sort();
-      localValues.value[currentIndex.value] = uniqueValues
-        .filter(
-          (lv) =>
-            lv !== '' &&
-            lv !== null &&
-            (typeof lv === 'string' || lv instanceof String)
-        )
-        .map((lv) => ({ title: lv, value: lv }));
+    if (nonCustomViewInitLoad.value) {
+      localItemsToRls.value = props.itemsToRls[0].rls.map((rls, index) => {
+        const tempValues = newSubmissionList.map((v) => v[rls.field]);
+        const uniqueValues = [...new Set(tempValues)].sort();
+        localValues.value[index] = uniqueValues
+          .filter(
+            (lv) =>
+              lv !== '' &&
+              lv !== null &&
+              (typeof lv === 'string' || lv instanceof String)
+          )
+          .map((lv) => ({ title: lv, value: lv }));
+        return { ...rls }; // Ensure a new object is returned to avoid reference issues
+      });
+      nonCustomViewInitLoad.value = false;
+    } else {
+      const selectedField = localItemsToRls.value[currentIndex.value].field;
+      if (selectedField) {
+        localItemsToRls.value[currentIndex.value].value = null;
+        localValues.value[currentIndex.value] = [];
+        const tempValues = newSubmissionList.map((v) => v[selectedField]);
+        const uniqueValues = [...new Set(tempValues)].sort();
+        localValues.value[currentIndex.value] = uniqueValues
+          .filter(
+            (lv) =>
+              lv !== '' &&
+              lv !== null &&
+              (typeof lv === 'string' || lv instanceof String)
+          )
+          .map((lv) => ({ title: lv, value: lv }));
+      }
     }
   }
 });
