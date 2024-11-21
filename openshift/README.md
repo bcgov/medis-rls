@@ -32,11 +32,25 @@ There are some requirements in the target Openshift namespace/project which are 
 
 ### ConfigMaps
 
-Go to the +Add screen in OpenShift and copy all from [app.cm](./app.cm.yaml), and add the appropriate values left empty under each data section. These values can be collected from your S3 provider and your Keycloak SSO provider.
+Go to the +Add screen in OpenShift and copy all from [app.cm](./app.cm.yaml), and add the appropriate values left empty under each data section. These values can be collected from your Keycloak SSO provider.
+
+**medis-rls-file-config** is a leftover artifact from the CHEFS deployment, it can be filled with the following arbitrary values:
+
+- FILES_UPLOADS_DIR=
+- FILES_UPLOADS_ENABLED=true
+- FILES_UPLOADS_FILECOUNT=1
+- FILES_UPLOADS_FILEKEY=files
+- FILES_UPLOADS_FILEMAXSIZE=25MB
+- FILES_UPLOADS_FILEMINSIZE=0KB
+- FILES_UPLOADS_PATH=files
+- FILES_PERMANENT=localStorage
+- FILES_LOCALSTORAGE_PATH=/files
 
 ### Secrets
 
-Go to the +Add screen in OpenShift and copy all from [app.secret](./app.secret.yaml), and add the appropriate values left empty under each data section. These values can be collected from your S3 provider and your Keycloak SSO provider.
+Go to the +Add screen in OpenShift and copy all from [app.secret](./app.secret.yaml), and add the appropriate values left empty under each data section. These values can be collected from your Keycloak SSO provider.
+
+**medis-rls-objectstorage-secret** is a leftover deployment artifact from CHEFS, this can be filled with any value (i.e. "dummy") to make sure the deployment pass.
 
 For _medis-rls-secret_, generate 2 random 32-char alphanumeric strings using `openssl rand -base64` or similar commands, and use them as the externalapikey and webhooksecret. mailapitoken is the CHES secrets which can be collected from your CHES integrations.
 
