@@ -62,12 +62,15 @@ const proccessRequest = async (m) => {
     const jsonCodec = JSONCodec();
     const data = jsonCodec.decode(m.data);
     try {
-      if (data && data['payload'] && data['payload']['data'] && ENCRYPTION_KEY) {
+      if (data && data['error']) {
+        // eslint-disable-next-line no-console
+        console.error('Error while receiving the message occured. Code: ', data['error']['code'], ' Message: ', data['error']['message']);
+      } else if (data && data['payload'] && data['payload']['data'] && ENCRYPTION_KEY) {
         const cryptr = new Cryptr(ENCRYPTION_KEY);
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
         // eslint-disable-next-line no-console
-        console.log(jsonData);
+        // console.log(jsonData);
         // updating HA hierarchy form
         if (data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' && data?.meta?.formMetadata?.rls_form_id) {
           if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
@@ -108,6 +111,9 @@ const proccessRequest = async (m) => {
             }
           }
         }
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('Error decrypting payload.data. Either message data or ENCRYPTION_KEY are empty');
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -128,10 +134,12 @@ const init = async () => {
     try {
       // no credentials provided.
       // anonymous connections have read access to the stream
-      console.log(`connect to nats server(s) ${servers} as 'anonymous'...`);
+      console.log(`connect to nats server(s) ${servers} as ${config.get('server.natsUsername')}...`);
       nc = await natsConnect({
         servers: servers,
         reconnectTimeWait: 10 * 1000, // 10s
+        user: config.get('server.natsUsername'),
+        pass: config.get('server.natsPassword'),
       });
 
       console.log('access jetstream...');
