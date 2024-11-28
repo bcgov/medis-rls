@@ -70,6 +70,8 @@ const proccessRequest = async (m) => {
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
         // eslint-disable-next-line no-console
+        console.log('ESS event meta: ', data?.meta);
+        // eslint-disable-next-line no-console
         // console.log(jsonData);
         // updating HA hierarchy form
         if (data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' && data?.meta?.formMetadata?.rls_form_id) {
