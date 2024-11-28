@@ -70,7 +70,7 @@ const proccessRequest = async (m) => {
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
         // eslint-disable-next-line no-console
-        // console.log(jsonData);
+        console.log(jsonData);
         // updating HA hierarchy form
         if (data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' && data?.meta?.formMetadata?.rls_form_id) {
           if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
@@ -100,6 +100,9 @@ const proccessRequest = async (m) => {
                     delete jsonData.deleted;
                   }
                   submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
+                } else {
+                  // eslint-disable-next-line no-console
+                  console.log('No corresponding FORM ID or HA record found');
                 }
               } else if (data?.meta?.type === 'created') {
                 const form = await formService.readForm(data?.meta?.formMetadata?.rls_form_id);
