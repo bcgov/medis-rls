@@ -9,6 +9,7 @@ const log = require('./src/components/log')(module.filename);
 const httpLogger = require('./src/components/log').httpLogger;
 const middleware = require('./src/forms/common/middleware');
 const v1Router = require('./src/routes/v1');
+const eventStream = require('./src/components/eventStreamService');
 
 const DataConnection = require('./src/db/dataConnection');
 const dataConnection = new DataConnection();
@@ -36,6 +37,7 @@ app.set('trust proxy', 1);
 if (process.env.NODE_ENV !== 'test') {
   // Initialize connections and exit if unsuccessful
   initializeConnections();
+  eventStream();
   app.use(httpLogger);
 }
 
