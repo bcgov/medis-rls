@@ -49,7 +49,7 @@ let consumer = undefined; // pull consumer (ordered, ephemeral)
 const STREAM_NAME = 'CHEFS';
 const FILTER_SUBJECTS = ['PUBLIC.forms.>', 'PRIVATE.forms.>'];
 const MAX_MESSAGES = 2;
-const DURABLE_NAME = 'pullConsumer';
+const DURABLE_NAME = 'PCD_RLS_DEV';
 const ENCRYPTION_KEY = config.get('server.natsEncryptionKey') || undefined;
 
 const proccessRequest = async (m) => {
