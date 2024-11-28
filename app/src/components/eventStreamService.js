@@ -93,7 +93,7 @@ const proccessRequest = async (m) => {
               delete jsonData.updatedAt;
               if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
                 query = SubmissionMetadata.query().whereRaw(
-                  `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}'`
+                  `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}' and deleted != true`
                 );
                 const internalSubmission = await query;
                 if (internalSubmission && internalSubmission.length > 0) {
