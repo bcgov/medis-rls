@@ -70,9 +70,7 @@ const proccessRequest = async (m) => {
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
         // eslint-disable-next-line no-console
-        console.log(data?.meta);
-        // eslint-disable-next-line no-console
-        console.log(jsonData);
+        // console.log(jsonData);
         // updating HA hierarchy form
         if (data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' && data?.meta?.formMetadata?.rls_form_id) {
           if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
@@ -91,19 +89,21 @@ const proccessRequest = async (m) => {
               delete jsonData.createdAt;
               delete jsonData.updatedBy;
               delete jsonData.updatedAt;
-              if (data?.meta?.type === 'updated') {
+              if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
                 query = SubmissionMetadata.query().whereRaw(
                   `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}'`
                 );
                 const internalSubmission = await query;
                 if (internalSubmission && internalSubmission.length > 0) {
-                  if (!jsonData.deleted) {
-                    // remove delete prop to make actual submission update
-                    delete jsonData.deleted;
+                  if (data?.meta?.type === 'deleted') {
+                    submissionService.delete(internalSubmission[0]?.submissionId, serviceAccountUser[0]);
+                  } else {
+                    if (!jsonData.deleted) {
+                      // remove delete prop to make actual submission update
+                      delete jsonData.deleted;
+                    }
+                    submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
                   }
-                  const upd = submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
-                  // eslint-disable-next-line no-console
-                  console.log('UPD RES', upd);
                 } else {
                   // eslint-disable-next-line no-console
                   console.log('No corresponding FORM ID or HA record found');
