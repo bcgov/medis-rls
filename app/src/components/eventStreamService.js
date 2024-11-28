@@ -49,7 +49,7 @@ let consumer = undefined; // pull consumer (ordered, ephemeral)
 const STREAM_NAME = 'CHEFS';
 const FILTER_SUBJECTS = ['PUBLIC.forms.>', 'PRIVATE.forms.>'];
 const MAX_MESSAGES = 2;
-const DURABLE_NAME = 'PCD_RLS_DEV';
+const DURABLE_NAME = config.get('server.natsDurableName');
 const ENCRYPTION_KEY = config.get('server.natsEncryptionKey') || undefined;
 
 const proccessRequest = async (m) => {
@@ -69,12 +69,16 @@ const proccessRequest = async (m) => {
         const cryptr = new Cryptr(ENCRYPTION_KEY);
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
-        // eslint-disable-next-line no-console
-        console.log('ESS event meta: ', data?.meta);
-        // eslint-disable-next-line no-console
-        // console.log(jsonData);
-        // updating HA hierarchy form
-        if (data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' && data?.meta?.formMetadata?.rls_form_id) {
+        if (
+          data?.meta?.formMetadata?.rls_env === config.get('server.natsDurableName') &&
+          data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' &&
+          data?.meta?.formMetadata?.rls_form_id
+        ) {
+          // updating HA hierarchy form
+          // eslint-disable-next-line no-console
+          console.log(data?.meta?.formMetadata?.rls_env, ' ESS event meta: ', data?.meta);
+          // eslint-disable-next-line no-console
+          // console.log(jsonData);
           if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
             let query = User.query().modify('filterUsername', 'service_account', true);
             const serviceAccountUser = await query;
@@ -168,7 +172,7 @@ const init = async () => {
 };
 
 const pull = async () => {
-  console.log('fetch...');
+  console.log('ESS fetching new messages..');
   let iter = await consumer.fetch({
     filterSubjects: FILTER_SUBJECTS,
     max_messages: MAX_MESSAGES,
