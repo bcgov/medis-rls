@@ -60,7 +60,8 @@
     "natsWebsocket": "NATS_WEBSOCKET",
     "natsEncryptionKey": "NATS_ENCRYPTION_KEY",
     "natsUsername": "NATS_USERNAME",
-    "natsPassword": "NATS_PASSWORD"
+    "natsPassword": "NATS_PASSWORD",
+    "natsDurableName": "NATS_DURABLE_NAME"
   },
   "serviceClient": {
     "commonServices": {
