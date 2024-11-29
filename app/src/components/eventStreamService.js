@@ -79,7 +79,7 @@ const proccessRequest = async (m) => {
           console.log(data?.meta?.formMetadata?.rls_env, ' ESS event meta: ', data?.meta);
           // eslint-disable-next-line no-console
           // console.log(jsonData);
-          if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
+          if (jsonData?.submission?.state === 'submitted') {
             let query = User.query().modify('filterUsername', 'service_account', true);
             const serviceAccountUser = await query;
             if (serviceAccountUser && serviceAccountUser.length > 0) {
