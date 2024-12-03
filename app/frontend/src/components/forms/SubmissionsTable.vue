@@ -29,6 +29,7 @@ export default {
       deleteItem: {},
       // Show only deleted items
       deletedOnly: false,
+      draftedOnly: false,
       filterData: [],
       search: '',
       filterIgnore: [
@@ -367,7 +368,7 @@ export default {
         formId: this.formId,
         itemsPerPage: this.itemsPerPage,
         page: this.page - 1,
-        filterformSubmissionStatusCode: true,
+        filterformSubmissionStatusCode: this.draftedOnly ? false : true,
         paginationEnabled: true,
         sortBy: this.sortBy,
         search: this.search,
@@ -400,6 +401,7 @@ export default {
               : moment().add(50, 'years').utc().format('YYYY-MM-DD hh:mm:ss'), //Get User filter Criteria (Max Date)
         }),
         deletedOnly: this.deletedOnly,
+        draftedOnly: this.draftedOnly,
         createdBy: this.currentUserOnly
           ? `${this.user.username}@${this.user.idp?.code}`
           : '',
@@ -418,6 +420,7 @@ export default {
             submitter: s.createdBy,
             versionId: s.formVersionId,
             deleted: s.deleted,
+            draft: s.draft,
             lateEntry: s.lateEntry,
           };
           // Add any custom columns
@@ -635,6 +638,18 @@ export default {
             <span :class="{ 'mr-2': isRTL }" :lang="lang">
               {{ $t('trans.submissionsTable.showDeletedSubmissions') }}
             </span>
+          </template>
+        </v-checkbox>
+      </div>
+
+      <div>
+        <v-checkbox
+          v-model="draftedOnly"
+          class="pl-3"
+          @click="refreshSubmissions"
+        >
+          <template #label>
+            <span :class="{ 'mr-2': isRTL }" :lang="lang"> Show drafts </span>
           </template>
         </v-checkbox>
       </div>

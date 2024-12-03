@@ -79,47 +79,45 @@ const proccessRequest = async (m) => {
           console.log(data?.meta?.formMetadata?.rls_env, ' ESS event meta: ', data?.meta);
           // eslint-disable-next-line no-console
           // console.log(jsonData);
-          if (jsonData?.submission?.state === 'submitted' && !jsonData?.draft) {
-            let query = User.query().modify('filterUsername', 'service_account', true);
-            const serviceAccountUser = await query;
-            if (serviceAccountUser && serviceAccountUser.length > 0) {
-              serviceAccountUser[0].usernameIdp = serviceAccountUser[0].idpCode
-                ? `${serviceAccountUser[0].username}@${serviceAccountUser[0].idpCode}`
-                : serviceAccountUser[0].username;
-              serviceAccountUser[0].public = true;
-              // remove some props that comes from CHEFS
-              delete jsonData.formVersionId;
-              delete jsonData.confirmationId;
-              delete jsonData.id;
-              delete jsonData.createdBy;
-              delete jsonData.createdAt;
-              delete jsonData.updatedBy;
-              delete jsonData.updatedAt;
-              if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
-                query = SubmissionMetadata.query().whereRaw(
-                  `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}' and deleted != true`
-                );
-                const internalSubmission = await query;
-                if (internalSubmission && internalSubmission.length > 0) {
-                  if (data?.meta?.type === 'deleted') {
-                    submissionService.delete(internalSubmission[0]?.submissionId, serviceAccountUser[0]);
-                  } else {
-                    if (!jsonData.deleted) {
-                      // remove delete prop to make actual submission update
-                      delete jsonData.deleted;
-                    }
-                    submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
-                  }
+          let query = User.query().modify('filterUsername', 'service_account', true);
+          const serviceAccountUser = await query;
+          if (serviceAccountUser && serviceAccountUser.length > 0) {
+            serviceAccountUser[0].usernameIdp = serviceAccountUser[0].idpCode
+              ? `${serviceAccountUser[0].username}@${serviceAccountUser[0].idpCode}`
+              : serviceAccountUser[0].username;
+            serviceAccountUser[0].public = true;
+            // remove some props that comes from CHEFS
+            delete jsonData.formVersionId;
+            delete jsonData.confirmationId;
+            delete jsonData.id;
+            delete jsonData.createdBy;
+            delete jsonData.createdAt;
+            delete jsonData.updatedBy;
+            delete jsonData.updatedAt;
+            if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
+              query = SubmissionMetadata.query().whereRaw(
+                `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}' and deleted != true`
+              );
+              const internalSubmission = await query;
+              if (internalSubmission && internalSubmission.length > 0) {
+                if (data?.meta?.type === 'deleted') {
+                  submissionService.delete(internalSubmission[0]?.submissionId, serviceAccountUser[0]);
                 } else {
-                  // eslint-disable-next-line no-console
-                  console.log('No corresponding FORM ID or HA record found');
+                  if (!jsonData.deleted) {
+                    // remove delete prop to make actual submission update
+                    delete jsonData.deleted;
+                  }
+                  submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
                 }
-              } else if (data?.meta?.type === 'created') {
-                const form = await formService.readForm(data?.meta?.formMetadata?.rls_form_id);
-                const formVersion = form.versions.filter((fv) => fv.published === true);
-                if (formVersion && formVersion.length > 0) {
-                  formService.createSubmission(formVersion[0].id, jsonData, serviceAccountUser[0]);
-                }
+              } else {
+                // eslint-disable-next-line no-console
+                console.log('No corresponding FORM ID or HA record found');
+              }
+            } else if (data?.meta?.type === 'created') {
+              const form = await formService.readForm(data?.meta?.formMetadata?.rls_form_id);
+              const formVersion = form.versions.filter((fv) => fv.published === true);
+              if (formVersion && formVersion.length > 0) {
+                formService.createSubmission(formVersion[0].id, jsonData, serviceAccountUser[0]);
               }
             }
           }

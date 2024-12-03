@@ -18,7 +18,7 @@ class SubmissionMetadata extends Model {
         }
       },
       filterformSubmissionStatusCode(query, value) {
-        if (value) {
+        if (value !== 'false') {
           query.whereNot('formSubmissionStatusCode', null);
         }
       },
