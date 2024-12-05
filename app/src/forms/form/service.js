@@ -374,9 +374,33 @@ const service = {
         return true;
       });
     }
-    const data = await query;
+    let data = await query;
     let fields = [];
     if (data && data.length > 0) {
+      if (viewName === 'ha_hierarchy') {
+        const com = rlsRes.filter((r) => r.field === 'communityName' || r.field === 'pcnName' || r.field === 'pcnClinicName');
+        const upccName = rlsRes.filter((r) => r.field === 'upccName');
+        const upccValues = upccName && upccName.length > 0 ? upccName.map((u) => u.value) : [];
+        const nppccName = rlsRes.filter((r) => r.field === 'nppccName');
+        const nppccValues = nppccName && nppccName.length > 0 ? nppccName.map((n) => n.value) : [];
+        const fnpccName = rlsRes.filter((r) => r.field === 'fnpccName');
+        const fnpccValues = fnpccName && fnpccName.length > 0 ? fnpccName.map((f) => f.value) : [];
+        const chcName = rlsRes.filter((r) => r.field === 'chcName');
+        const chcValues = chcName && chcName.length > 0 ? chcName.map((c) => c.value) : [];
+        if (com && com.length > 0) {
+          const comValues = com.map((c) => c.value);
+          data = data.map((d) => {
+            if (comValues.includes(d?.communityName) || comValues.includes(d?.pcnName) || comValues.includes(d?.pcnClinicName)) {
+              d.upccName = upccValues.includes(d.upccName) ? d.upccName : null;
+              d.upccTypeOfCare = upccValues.includes(d.upccName) ? d.upccTypeOfCare : null;
+              d.nppccName = nppccValues.includes(d.nppccName) ? d.nppccName : null;
+              d.fnpccName = fnpccValues.includes(d.fnpccName) ? d.fnpccName : null;
+              d.chcName = chcValues.includes(d.chcName) ? d.chcName : null;
+            }
+            return d;
+          });
+        }
+      }
       fields = Object.keys(data[0]);
       fields = fields?.filter((f) => f !== 'formId' && f !== 'id').map((f) => f);
     }
