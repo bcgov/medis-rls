@@ -645,6 +645,7 @@ export const useFormStore = defineStore('form', {
       formId,
       userView,
       deletedOnly = false,
+      draftedOnly = false,
       createdBy = '',
       createdAt,
       page,
@@ -670,6 +671,7 @@ export const useFormStore = defineStore('form', {
             })
           : await formService.listSubmissions(formId, {
               deleted: deletedOnly,
+              draft: draftedOnly,
               fields: fields,
               createdBy: createdBy,
               createdAt: createdAt,

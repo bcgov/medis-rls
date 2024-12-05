@@ -55,7 +55,13 @@
     "logLevel": "SERVER_LOGLEVEL",
     "port": "SERVER_PORT",
     "webhoookSecret": "WEBHOOK_SECRET",
-    "externalApiKey": "EXTERNAL_API_KEY"
+    "externalApiKey": "EXTERNAL_API_KEY",
+    "natsServers": "NATS_SERVERS",
+    "natsWebsocket": "NATS_WEBSOCKET",
+    "natsEncryptionKey": "NATS_ENCRYPTION_KEY",
+    "natsUsername": "NATS_USERNAME",
+    "natsPassword": "NATS_PASSWORD",
+    "natsDurableName": "NATS_DURABLE_NAME"
   },
   "serviceClient": {
     "commonServices": {
