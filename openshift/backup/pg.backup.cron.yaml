@@ -1,0 +1,91 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: postgres-backup-template
+  annotations:
+    description: 'Template for a DB container backup job'
+    tags: 'database'
+parameters:
+  - name: DATABASE_BACKUP_KEEP
+    description: 'Backup retention policy in days'
+    value: '14'
+  - name: DATABASE_PORT
+    description: 'DB Port'
+    value: '5432'
+  - name: DATABASE_BACKUP_VOLUME_CLAIM
+    description: 'Name of the volume claim to be used as storage'
+    value: 'pg-backup-pvc'
+    required: true
+  - name: DATABASE_SECRET
+    description: 'Name of the secret containing the DB credentials'
+    value: 'app-db-secret'
+    required: true
+objects:
+  - apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: postgres-backup
+      creationTimestamp: null
+    spec:
+      schedule: '0 10 * * 6'
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3 
+      failedJobsHistoryLimit: 1
+      jobTemplate:
+        spec:
+          template:
+            metadata:
+              creationTimestamp: null
+              labels:
+                app: medis-rls
+                role: db-backup
+            spec:
+              volumes:
+                - name: backup-bin
+                  configMap:
+                    name: pg-backup-bin
+                    defaultMode: 0777
+                - name: database-backup
+                  persistentVolumeClaim:
+                    claimName: ${DATABASE_BACKUP_VOLUME_CLAIM}
+              restartPolicy: Never
+              containers:
+                - name: database-backup
+                  image: 'alpine/psql:16.3'
+                  command:
+                    - "sh"
+                    - "-c"
+                    - "/app/bin/pg_backup.sh"
+                  env:
+                    - name: DATABASE_USER
+                      valueFrom:
+                        secretKeyRef:
+                          key: app-db-username
+                          name: ${DATABASE_SECRET}
+                    - name: DATABASE_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          key: app-db-password
+                          name: ${DATABASE_SECRET}
+                    - name: DATABASE_NAME
+                      valueFrom:
+                        secretKeyRef:
+                          key: app-db-name
+                          name: ${DATABASE_SECRET}
+                    - name: DATABASE_BACKUP_KEEP
+                      value: ${DATABASE_BACKUP_KEEP}
+                    - name: DATABASE_SECRET
+                      value: ${DATABASE_SECRET}
+                    - name: DATABASE_HOST
+                      value: ${DATABASE_SECRET}
+                    - name: DATABASE_PORT
+                      value: ${DATABASE_PORT}
+                    - name: TZ
+                      value: Europe/Zurich
+                  volumeMounts:
+                    - name: backup-bin
+                      mountPath: /app/bin
+                      readOnly: true
+                    - name: database-backup
+                      mountPath: /backup
+              restartPolicy: OnFailure

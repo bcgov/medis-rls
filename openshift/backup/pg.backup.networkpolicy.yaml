@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-medis-rls-app-db-backup-to-rls-patroni-cluster
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: patroni
+      role: master
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 5432
+      from:
+        - podSelector:
+            matchLabels:
+              app: medis-rls
+              role: db-backup
+  policyTypes:
+    - Ingress
+status: {}
