@@ -11,7 +11,12 @@ defineProps({
   },
   appTitle: {
     type: String,
-    default: 'Common Hosted Forms',
+    default:
+      origin.includes('localhost') || origin.includes('-dev')
+        ? 'MEDIS RLS - DEV'
+        : origin.includes('-test')
+        ? 'MEDIS RLS - TEST'
+        : 'MEDIS RLS',
   },
 });
 
