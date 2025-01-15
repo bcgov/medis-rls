@@ -34,4 +34,8 @@ routes.get('/submissions', async (req, res, next) => {
   await controller.listFormSubmissions(req, res, next);
 });
 
+routes.get('/listSubmissions', async (req, res, next) => {
+  await controller.listFormSubmissionsWithFields(req, res, next);
+});
+
 module.exports = routes;
