@@ -2,7 +2,7 @@ const axios = require('axios');
 const formService = require('../form/service');
 const userService = require('../user/service');
 const config = require('config');
-const { query } = require('../common/models/tables/submissionAudit');
+const _ = require('lodash');
 
 const CHEFS_API_ENDPOINT = 'https://submit.digital.gov.bc.ca/app/api/v1';
 
@@ -57,7 +57,7 @@ module.exports = {
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
         const queries = req.query;
-
+        const queriesOptionsWithoutId = _.omit(queries, 'extFormId');
         const axiosOptions = { timeout: 10000 };
         const axiosInstance = axios.create(axiosOptions);
         const basicAuthEncoded = Buffer.from(formId + ':' + req.extFormApiKey).toString('base64');
@@ -70,7 +70,9 @@ module.exports = {
             return Promise.reject(error);
           }
         );
-        const remoteSubmissionData = await axiosInstance.get(`${CHEFS_API_ENDPOINT}/forms/${formId}/submissions${query.stringify(queries)}`);
+        const remoteSubmissionData = await axiosInstance.get(
+          `${CHEFS_API_ENDPOINT}/forms/${formId}/submissions${queriesOptionsWithoutId ? `?${new URLSearchParams(queriesOptionsWithoutId).toString()}` : ''}`
+        );
         return res.status(200).json(remoteSubmissionData?.data);
       } else {
         return res.status(400).json({ message: 'Bad Request' });
