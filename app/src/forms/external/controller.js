@@ -54,6 +54,10 @@ module.exports = {
         return res.status(401).json({ message: 'Invalid API key' });
       }
       const formId = req.query?.extFormId;
+
+      const idpUserId = req.headers['x-chefs-user-userid'];
+      const userRls = await userService.readByIdpUserId(idpUserId);
+
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
         const queries = req.query;

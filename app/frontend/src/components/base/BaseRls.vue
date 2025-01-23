@@ -184,6 +184,7 @@ const initializeLocalItemsToRls = async () => {
         formId: props.currentFormId,
         remoteFormId: null,
         remoteFormName: null,
+        remoteFieldKey: null,
         field: null,
         value: null,
       },
@@ -288,6 +289,7 @@ function addNewItem() {
     formId: props.currentFormId,
     remoteFormId: null,
     remoteFormName: null,
+    remoteFieldKey: null,
     field: null,
     value: null,
   });
@@ -494,6 +496,14 @@ defineExpose({ RTL });
                         <v-text-field
                           v-model="rls.remoteFormName"
                           label="Form Name"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col cols="6">
+                        <v-text-field
+                          v-model="rls.remoteFieldKey"
+                          hint="Field key in CHEFS schema. i.e. 'healthAuthority'"
+                          persistent-hint
+                          label="Field Key"
                         ></v-text-field>
                       </v-col>
                     </v-row>
