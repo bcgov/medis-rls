@@ -530,7 +530,7 @@ defineExpose({ RTL });
                       <v-col cols="6">
                         <v-text-field
                           v-model="rls.remoteFieldKey"
-                          hint="Field key in CHEFS schema. i.e. 'healthAuthority'"
+                          hint="Field key in CHEFS schema. i.e. 'healthAuthority'; Nested fields can be declared as 'submissionInformation.communityName'"
                           persistent-hint
                           label="Field Key"
                         ></v-text-field>

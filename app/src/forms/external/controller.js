@@ -63,7 +63,7 @@ module.exports = {
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
         const queries = req.query;
-        const queriesOptionsWithoutId = _.omit(queries, ['extFormId', 'filter']);
+        let queriesOptionsWithoutId = _.omit(queries, ['extFormId', 'filter']);
         const axiosOptions = { timeout: 10000 };
         const axiosInstance = axios.create(axiosOptions);
         const basicAuthEncoded = Buffer.from(formId + ':' + req.extFormApiKey).toString('base64');
@@ -76,6 +76,15 @@ module.exports = {
             return Promise.reject(error);
           }
         );
+        const roles = await rlsService.listRlsByUserIdAndRemoteFormId(userRls.id, formId);
+
+        if (roles.length > 0) {
+          queriesOptionsWithoutId = {
+            ...queriesOptionsWithoutId,
+            fields: queriesOptionsWithoutId.fields + ',' + roles.map((role) => role.remoteFieldKey.split('.')[0]).join(','),
+          };
+        }
+
         const remoteSubmissionData = await axiosInstance.get(
           `${CHEFS_API_ENDPOINT}/forms/${formId}/submissions${queriesOptionsWithoutId ? `?${new URLSearchParams(queriesOptionsWithoutId).toString()}` : ''}`
         );
@@ -83,8 +92,6 @@ module.exports = {
         if (!filter) {
           return res.status(200).json(remoteSubmissionData?.data);
         }
-
-        const roles = await rlsService.listRlsByUserIdAndRemoteFormId(userRls.id, formId);
 
         if (roles.length === 0) {
           return res.status(400).json(remoteSubmissionData?.data);
