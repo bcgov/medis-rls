@@ -94,7 +94,7 @@ module.exports = {
         }
 
         if (roles.length === 0) {
-          return res.status(400).json(remoteSubmissionData?.data);
+          return res.status(200).json(remoteSubmissionData?.data);
         }
 
         const filteredSubmissions = roles.map((role) => {
