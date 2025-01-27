@@ -20,6 +20,11 @@ class FormRls extends Timestamps(Model) {
           query.where('userId', value);
         }
       },
+      filterRemoteFormId(query, value) {
+        if (value) {
+          query.where('remoteFormId', value);
+        }
+      },
     };
   }
 

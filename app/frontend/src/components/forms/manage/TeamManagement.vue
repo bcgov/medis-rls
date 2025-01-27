@@ -243,6 +243,7 @@ export default {
             value: rls.value,
             remoteFormId: rls.remoteFormId,
             remoteFormName: rls.remoteFormName,
+            remoteFieldKey: rls.remoteFieldKey,
           });
           return true;
         });

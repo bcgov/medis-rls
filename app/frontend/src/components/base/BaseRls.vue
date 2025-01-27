@@ -215,7 +215,7 @@ const onFieldUpdate = async (index) => {
     } else {
       const criteria = {
         formId: props.currentFormId,
-        formFields: selectedField,
+        formFields: props.currentFormFields,
         noRls: true,
       };
       await formStore.fetchSubmissions(criteria);
@@ -228,7 +228,8 @@ watch(submissionList, async (newSubmissionList) => {
   if (newSubmissionList && newSubmissionList.length > 0) {
     if (nonCustomViewInitLoad.value) {
       localItemsToRls.value = props.itemsToRls[0].rls.map((rls, index) => {
-        const tempValues = newSubmissionList.map((v) => v[rls.field]);
+        // const tempValues = newSubmissionList.map((v) => v[rls.field]);
+        const tempValues = findMatchingValues(newSubmissionList, rls.field);
         const uniqueValues = [...new Set(tempValues)].sort();
         localValues.value[index] = uniqueValues
           .filter(
@@ -246,7 +247,9 @@ watch(submissionList, async (newSubmissionList) => {
       if (selectedField) {
         localItemsToRls.value[currentIndex.value].value = null;
         localValues.value[currentIndex.value] = [];
-        const tempValues = newSubmissionList.map((v) => v[selectedField]);
+        // const tempValues = newSubmissionList.map((v) => v[selectedField]);
+
+        const tempValues = findMatchingValues(newSubmissionList, selectedField);
         const uniqueValues = [...new Set(tempValues)].sort();
         localValues.value[currentIndex.value] = uniqueValues
           .filter(
@@ -260,6 +263,21 @@ watch(submissionList, async (newSubmissionList) => {
     }
   }
 });
+
+const findMatchingValues = (obj, key, results = []) => {
+  if (!obj) return results;
+  if (typeof obj === 'object') {
+    if (Array.isArray(obj)) {
+      obj.forEach((item) => findMatchingValues(item, key, results));
+    } else {
+      Object.entries(obj).forEach(([k, v]) => {
+        if (k === key) results.push(v);
+        findMatchingValues(v, key, results);
+      });
+    }
+  }
+  return results;
+};
 
 function transformStrings(array) {
   return array.map((str) => {
@@ -299,6 +317,7 @@ function closeDialog() {
   initItemsToRls.value.map((rls, index) => {
     localItemsToRls.value[index].field = rls.field;
     localItemsToRls.value[index].value = rls.value;
+    localItemsToRls.value[index].remoteFormId = rls.remoteFormId;
     return true;
   });
   emit('close-dialog');
@@ -306,7 +325,12 @@ function closeDialog() {
 
 function continueDialog() {
   emit('continue-dialog', {
-    rlsItems: localItemsToRls.value,
+    rlsItems: localItemsToRls.value.map((item) => {
+      return {
+        ...item,
+        value: typeof item.value === 'object' ? item.value.value : item.value,
+      };
+    }),
     customViewName: props.customViewName,
     updating: props.rlsExist,
   });
@@ -334,6 +358,8 @@ function cancelFormId(index) {
     initItemsToRls.value[index]?.remoteFormId;
   localItemsToRls.value[index].remoteFormName =
     initItemsToRls.value[index]?.remoteFormName;
+  localItemsToRls.value[index].remoteFieldKey =
+    initItemsToRls.value[index]?.remoteFieldKey;
   showSetFormIdDialog.value[index] = false;
 }
 
@@ -343,6 +369,7 @@ async function saveFormId(index, deleting = false) {
     if (deleting) {
       localItemsToRls.value[index].remoteFormId = null;
       localItemsToRls.value[index].remoteFormName = null;
+      localItemsToRls.value[index].remoteFieldKey = null;
     }
     const payload = {
       rlsItems: localItemsToRls.value,
@@ -367,6 +394,8 @@ async function saveFormId(index, deleting = false) {
       initItemsToRls.value[index]?.remoteFormId;
     localItemsToRls.value[index].remoteFormName =
       initItemsToRls.value[index]?.remoteFormName;
+    localItemsToRls.value[index].remoteFieldKey =
+      initItemsToRls.value[index]?.remoteFieldKey;
   }
   savingFormId.value[index] = false;
   showSetFormIdDialog.value[index] = false;
@@ -420,12 +449,12 @@ defineExpose({ RTL });
               </v-col>
               <v-col cols="5">
                 <v-card-subtitle>Select the value</v-card-subtitle>
-                <v-select
+                <v-combobox
                   v-model="rls.value"
                   :rules="valueRules"
                   label="Value"
                   :items="localValues[index]"
-                ></v-select>
+                ></v-combobox>
               </v-col>
               <v-col cols="2" class="v-card-actions justify-center">
                 <v-tooltip location="bottom">
