@@ -1,6 +1,7 @@
 const axios = require('axios');
 const formService = require('../form/service');
 const userService = require('../user/service');
+const rlsService = require('../rls/service');
 const config = require('config');
 const _ = require('lodash');
 
@@ -54,10 +55,15 @@ module.exports = {
         return res.status(401).json({ message: 'Invalid API key' });
       }
       const formId = req.query?.extFormId;
+      const filter = req.query?.filter;
+
+      const idpUserId = req.headers['x-chefs-user-userid'];
+      const userRls = await userService.readByIdpUserId(idpUserId);
+
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
         const queries = req.query;
-        const queriesOptionsWithoutId = _.omit(queries, 'extFormId');
+        let queriesOptionsWithoutId = _.omit(queries, ['extFormId', 'filter']);
         const axiosOptions = { timeout: 10000 };
         const axiosInstance = axios.create(axiosOptions);
         const basicAuthEncoded = Buffer.from(formId + ':' + req.extFormApiKey).toString('base64');
@@ -70,10 +76,40 @@ module.exports = {
             return Promise.reject(error);
           }
         );
+        const roles = await rlsService.listRlsByUserIdAndRemoteFormId(userRls.id, formId);
+
+        if (roles.length > 0) {
+          queriesOptionsWithoutId = {
+            ...queriesOptionsWithoutId,
+            fields: queriesOptionsWithoutId.fields + ',' + roles.map((role) => role.remoteFieldKey.split('.')[0]).join(','),
+          };
+        }
+
         const remoteSubmissionData = await axiosInstance.get(
           `${CHEFS_API_ENDPOINT}/forms/${formId}/submissions${queriesOptionsWithoutId ? `?${new URLSearchParams(queriesOptionsWithoutId).toString()}` : ''}`
         );
-        return res.status(200).json(remoteSubmissionData?.data);
+
+        if (!filter) {
+          return res.status(200).json(remoteSubmissionData?.data);
+        }
+
+        if (roles.length === 0) {
+          return res.status(200).json(remoteSubmissionData?.data);
+        }
+
+        const filteredSubmissions = roles.map((role) => {
+          return remoteSubmissionData?.data.filter((submission) => {
+            const nestedPath = role.remoteFieldKey ? role.remoteFieldKey.split('.') : null;
+
+            if (nestedPath) {
+              return _.get(submission, nestedPath) === role.value;
+            }
+
+            return true;
+          });
+        });
+
+        res.status(200).json(filteredSubmissions);
       } else {
         return res.status(400).json({ message: 'Bad Request' });
       }

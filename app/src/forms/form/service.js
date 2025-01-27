@@ -669,32 +669,43 @@ const service = {
   readVersion: (formVersionId) => {
     return FormVersion.query().findById(formVersionId).throwIfNotFound();
   },
-
   readVersionFields: async (formVersionId) => {
     // Recursively find all field key names
     // TODO: Consider if this should be a form utils function instead?
     const findFields = (obj) => {
       const fields = [];
-      if (!obj.hidden) {
-        // Only add key if it is an input and visible
-        if (obj.input) {
-          fields.push(obj.key);
-        } else if (Array.isArray(obj) && obj.length) {
-          // Handle table layouts, where it's an array without keys.
-          fields.push(obj.flatMap((o) => findFields(o)));
-        } else {
-          // Recursively check all children attributes that are arrays
-          Object.keys(obj).forEach((key) => {
-            if (Array.isArray(obj[key]) && obj[key].length) {
-              fields.push(obj[key].flatMap((o) => findFields(o)));
-            }
-          });
-        }
+
+      // Base case - if this is a component with a key and is an input field that isn't hidden
+      if (obj.key && obj.input === true && obj.hidden !== true) {
+        fields.push(obj.key);
       }
-      return fields.flat();
+
+      // Recursively search through components array
+      if (obj.components && Array.isArray(obj.components)) {
+        obj.components.forEach((component) => {
+          fields.push(...findFields(component));
+        });
+      }
+
+      // Special handling for columns array in simplecols4 type
+      if (obj.columns && Array.isArray(obj.columns)) {
+        obj.columns.forEach((column) => {
+          if (column.components) {
+            column.components.forEach((component) => {
+              fields.push(...findFields(component));
+            });
+          }
+        });
+      }
+
+      return fields;
     };
 
     const { schema } = await service.readVersion(formVersionId);
+    console.log(
+      'schema',
+      schema.components.flatMap((c) => findFields(c))
+    );
     return schema.components.flatMap((c) => findFields(c));
   },
   listSubmissions: async (formVersionId, params) => {

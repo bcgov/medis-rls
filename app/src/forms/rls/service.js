@@ -6,6 +6,11 @@ const service = {
   list: async (formId) => {
     return await FormRls.query().modify('filterFormId', formId);
   },
+
+  listRlsByUserIdAndRemoteFormId: async (userId, remoteFormId) => {
+    return await FormRls.query().modify('filterUserId', userId).modify('filterRemoteFormId', remoteFormId);
+  },
+
   create: async (formId, data, currentUser) => {
     let trx;
     try {
@@ -22,6 +27,7 @@ const service = {
               value: rls.value,
               remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
               remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+              remoteFieldKey: rls.remoteFieldKey === '' ? null : rls.remoteFieldKey,
               customViewName: data.customViewName,
               createdBy: currentUser.usernameIdp,
             }
@@ -55,6 +61,7 @@ const service = {
           }
         }
         for (const rls of data.rlsItems) {
+          console.log('rls', rls);
           if (rls.id) {
             const update = Object.assign(
               {},
@@ -64,6 +71,7 @@ const service = {
                 value: rls.value,
                 remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
                 remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+                remoteFieldKey: rls.remoteFieldKey === '' ? null : rls.remoteFieldKey,
                 customViewName: data.customViewName,
                 updatedBy: currentUser.usernameIdp,
               }
@@ -79,6 +87,7 @@ const service = {
                 value: rls.value,
                 remoteFormId: rls.remoteFormId === '' ? null : rls.remoteFormId,
                 remoteFormName: rls.remoteFormName === '' ? null : rls.remoteFormName,
+                remoteFieldKey: rls.remoteFieldKey === '' ? null : rls.remoteFieldKey,
                 customViewName: data.customViewName,
                 createdBy: currentUser.usernameIdp,
               }
