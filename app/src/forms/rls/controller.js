@@ -49,7 +49,7 @@ module.exports = {
       }
       const response = await service.listRlsByUserIdAndInternalFormId(userRls.id, req.params.formId);
 
-      const responseWithoutIdAndUserId = response.map((r) => _.omit(r, ['id', 'userId']));
+      const responseWithoutIdAndUserId = response.map((r) => _.omit(r, ['id', 'userId', 'createdBy', 'updatedAt', 'createdAt', 'updatedAt', 'customViewName']));
 
       return res.status(200).json(responseWithoutIdAndUserId);
     } catch (error) {
