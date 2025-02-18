@@ -11,6 +11,10 @@ const service = {
     return await FormRls.query().modify('filterUserId', userId).modify('filterRemoteFormId', remoteFormId);
   },
 
+  listRlsByUserIdAndInternalFormId: async (userId, formId) => {
+    return await FormRls.query().modify('filterUserId', userId).modify('filterFormId', formId);
+  },
+
   create: async (formId, data, currentUser) => {
     let trx;
     try {
