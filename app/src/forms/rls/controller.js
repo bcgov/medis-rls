@@ -1,6 +1,7 @@
 const service = require('./service');
 const userService = require('../user/service');
 const formService = require('../form/service');
+const _ = require('lodash');
 const config = require('config');
 
 module.exports = {
@@ -47,7 +48,10 @@ module.exports = {
         return res.status(401).json({ message: 'User not found' });
       }
       const response = await service.listRlsByUserIdAndInternalFormId(userRls.id, req.params.formId);
-      return res.status(200).json(response);
+
+      const responseWithoutIdAndUserId = response.map((r) => _.omit(r, ['id', 'userId']));
+
+      return res.status(200).json(responseWithoutIdAndUserId);
     } catch (error) {
       next(error);
     }
