@@ -82,6 +82,8 @@ const proccessRequest = async (m) => {
           let query = User.query().modify('filterUsername', 'service_account', true);
           const serviceAccountUser = await query;
           if (serviceAccountUser && serviceAccountUser.length > 0) {
+            // handle cases where HA includes single quotes
+            const escapeSQLString = (str) => str.replace(/'/g, "''");
             serviceAccountUser[0].usernameIdp = serviceAccountUser[0].idpCode
               ? `${serviceAccountUser[0].username}@${serviceAccountUser[0].idpCode}`
               : serviceAccountUser[0].username;
@@ -96,7 +98,9 @@ const proccessRequest = async (m) => {
             delete jsonData.updatedAt;
             if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
               query = SubmissionMetadata.query().whereRaw(
-                `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${jsonData?.submission?.data?.healthAuthority}' and deleted != true`
+                `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${escapeSQLString(
+                  jsonData?.submission?.data?.healthAuthority
+                )}' and deleted != true`
               );
               const internalSubmission = await query;
               if (internalSubmission && internalSubmission.length > 0) {
