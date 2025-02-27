@@ -117,6 +117,7 @@ const notificationStore = useNotificationStore();
 const { isRTL, lang, submissionList } = storeToRefs(useFormStore());
 
 const RTL = computed(() => (isRTL.value ? 'ml-5' : 'mr-5'));
+const form = computed(() => formStore.form);
 
 const isCustomViewData = computed(
   () =>
@@ -143,9 +144,17 @@ const initRlsFields = computed(() => {
     }
   } else {
     humanWords = transformStrings(props.currentFormFields);
-    return props.currentFormFields.map((f, i) => {
-      return { title: humanWords[i], value: f };
-    });
+    return props.currentFormFields
+      .map((f, i) => {
+        return { title: humanWords[i], value: f };
+      })
+      .filter((item) => {
+        if (form.value.fieldsWhitelist) {
+          return form.value.fieldsWhitelist.includes(item.value);
+        } else {
+          return true;
+        }
+      });
   }
 });
 

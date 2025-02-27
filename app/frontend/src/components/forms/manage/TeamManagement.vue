@@ -4,6 +4,7 @@ import { mapActions, mapState } from 'pinia';
 import BaseDialog from '~/components/base/BaseDialog.vue';
 import BaseRls from '~/components/base/BaseRls.vue';
 import BaseFilter from '~/components/base/BaseFilter.vue';
+import FieldsWhitelist from './FieldsWhitelist.vue';
 import AddTeamMember from '~/components/forms/manage/AddTeamMember.vue';
 import { i18n } from '~/internationalization';
 import { rbacService, roleService, rlsService } from '~/services';
@@ -24,6 +25,7 @@ export default {
     BaseFilter,
     AddTeamMember,
     BaseRls,
+    FieldsWhitelist,
   },
   props: {
     formId: {
@@ -73,6 +75,9 @@ export default {
     ...mapState(useIdpStore, ['listRoles']),
     canManageTeam() {
       return this.permissions.includes(FormPermissions.TEAM_UPDATE);
+    },
+    canUpdateForm() {
+      return this.permissions.includes(FormPermissions.FORM_UPDATE);
     },
     roleOrder() {
       return Object.values(FormRoleCodes);
@@ -597,6 +602,15 @@ export default {
           </v-tooltip>
         </span>
       </div>
+    </v-container>
+    <v-container class="mt-6">
+      <FieldsWhitelist
+        v-if="canUpdateForm && !form.custom_view_name"
+        :form-id="formId"
+        :current-form-fields="formFields || []"
+        :current-whitelist="form.fieldsWhitelist || []"
+        :custom-view-name="form.custom_view_name"
+      ></FieldsWhitelist>
     </v-container>
 
     <v-row no-gutters>

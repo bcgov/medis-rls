@@ -1,6 +1,7 @@
 const DataConnection = require('../../db/dataConnection');
 const dataConnection = new DataConnection();
 const Problem = require('api-problem');
+const knex = dataConnection.knex;
 const { ref } = require('objection');
 const { v4: uuidv4 } = require('uuid');
 const { EmailTypes } = require('../common/constants');
@@ -181,6 +182,7 @@ const service = {
         apiIntegration: data.apiIntegration,
         useCase: data.useCase,
         custom_view_name: data.custom_view_name,
+        fieldsWhitelist: data.fieldsWhitelist ? knex.raw('ARRAY[' + data.fieldsWhitelist.map((f) => `'${f}'`).join(',') + ']') : null,
       };
 
       await Form.query(trx).patchAndFetchById(formId, upd);

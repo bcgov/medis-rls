@@ -84,6 +84,8 @@ const genInitialForm = () => ({
   apiIntegration: null,
   useCase: null,
   wideFormLayout: false,
+  custom_view_name: null,
+  fieldsWhitelist: null,
 });
 
 export const useFormStore = defineStore('form', {
@@ -407,6 +409,9 @@ export const useFormStore = defineStore('form', {
     resetForm() {
       this.form = genInitialForm();
     },
+    setFieldsWhitelist(fieldsWhitelist) {
+      this.form.fieldsWhitelist = fieldsWhitelist;
+    },
     async updateEmailTemplate(emailTemplate) {
       try {
         await formService.updateEmailTemplate(emailTemplate);
@@ -459,6 +464,7 @@ export const useFormStore = defineStore('form', {
             ? this.form.enableCopyExistingSubmission
             : false,
           custom_view_name: this.form.custom_view_name,
+          fieldsWhitelist: this.form.fieldsWhitelist,
         });
 
         // update user labels with any new added labels
@@ -470,6 +476,7 @@ export const useFormStore = defineStore('form', {
           const response = await userService.updateUserLabels(this.form.labels);
           this.userLabels = response.data;
         }
+        return 1;
       } catch (error) {
         const notificationStore = useNotificationStore();
         notificationStore.addNotification({
@@ -479,6 +486,7 @@ export const useFormStore = defineStore('form', {
             error: error,
           }),
         });
+        return 0;
       }
     },
     //
