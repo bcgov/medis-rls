@@ -18,7 +18,7 @@ export default {
       showDescriptionDialog: false,
       loading: true,
       formDescription: null,
-      search: null,
+      search: new URLSearchParams(window.location.search).get('search') || null,
       sortBy: [{ key: 'name', order: 'asc' }],
     };
   },
