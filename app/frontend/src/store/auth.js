@@ -25,10 +25,10 @@ export const useAuthStore = defineStore('auth', {
     logoutUrl: undefined,
   }),
   getters: {
-    createLoginUrl: (state) => (options) =>
-      state.keycloak.createLoginUrl(options),
-    createLogoutUrl: (state) => (options) =>
-      state.keycloak.createLogoutUrl(options),
+    createLoginUrl: (state) => async (options) =>
+      await state.keycloak.createLoginUrl(options),
+    createLogoutUrl: (state) => async (options) =>
+      await state.keycloak.createLogoutUrl(options),
     email: (state) =>
       state.keycloak.tokenParsed ? state.keycloak.tokenParsed.email : '',
     fullName: (state) => state.keycloak.tokenParsed.name,
@@ -117,7 +117,7 @@ export const useAuthStore = defineStore('auth', {
       this.keycloak = keycloak;
       this.authenticated = isAuthenticated;
     },
-    login(idpHint) {
+    async login(idpHint) {
       if (this.ready) {
         if (!this.redirectUri) this.redirectUri = location.toString();
 
@@ -131,7 +131,7 @@ export const useAuthStore = defineStore('auth', {
 
         if (options.idpHint) {
           // Redirect to Keycloak if idpHint is available
-          window.location.replace(this.createLoginUrl(options));
+          window.location.replace(await this.createLoginUrl(options));
         } else {
           // Navigate to internal login page if no idpHint specified
           const router = getRouter();
@@ -143,12 +143,12 @@ export const useAuthStore = defineStore('auth', {
         }
       }
     },
-    logout() {
+    async logout() {
       if (this.ready) {
         // if we have not specified a logoutUrl, then use default
         if (!this.logoutUrl) {
           window.location.replace(
-            this.createLogoutUrl({
+            await this.createLogoutUrl({
               redirectUri: location.origin,
             })
           );
