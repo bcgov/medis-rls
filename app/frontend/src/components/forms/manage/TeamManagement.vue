@@ -76,6 +76,9 @@ export default {
     canManageTeam() {
       return this.permissions.includes(FormPermissions.TEAM_UPDATE);
     },
+    canUpdateForm() {
+      return this.permissions.includes(FormPermissions.FORM_UPDATE);
+    },
     roleOrder() {
       return Object.values(FormRoleCodes);
     },
@@ -602,9 +605,11 @@ export default {
     </v-container>
     <v-container class="mt-6">
       <FieldsWhitelist
+        v-if="canUpdateForm && !form.custom_view_name"
         :form-id="formId"
-        :current-form-fields="formFields"
-        :current-whitelist="form.fieldsWhitelist"
+        :current-form-fields="formFields || []"
+        :current-whitelist="form.fieldsWhitelist || []"
+        :custom-view-name="form.custom_view_name"
       ></FieldsWhitelist>
     </v-container>
 

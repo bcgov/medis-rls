@@ -8,6 +8,12 @@ const notificationStore = useNotificationStore();
 
 const selectedFields = ref([]);
 const editable = ref(false);
+const loading = ref(false);
+const formStore = useFormStore();
+const rlsPanel = ref(1);
+
+const isRTL = computed(() => formStore.isRTL);
+const lang = computed(() => formStore.lang);
 
 const props = defineProps({
   formId: {
@@ -56,18 +62,18 @@ const initRlsFields = computed(() => {
     if (props.customViewName === 'ha_hierarchy') {
       humanWords = HaCustomLabels();
       return Object.keys(humanWords).map((key) => {
-        return { title: humanWords[key], value: key };
+        return { title: humanWords[key] + '(' + key + ')', value: key };
       });
     } else {
       humanWords = transformStrings(props.customViewData?.fields);
       return props.customViewData?.fields?.map((f, i) => {
-        return { title: humanWords[i], value: f };
+        return { title: humanWords[i] + '(' + f + ')', value: f };
       });
     }
   } else {
     humanWords = transformStrings(props.currentFormFields);
     return props.currentFormFields.map((f, i) => {
-      return { title: humanWords[i], value: f };
+      return { title: humanWords[i] + '(' + f + ')', value: f };
     });
   }
 });
@@ -88,29 +94,33 @@ function transformString(string) {
 async function updateWhitelist() {
   try {
     if (selectedFields.value.length === 0) {
-      throw new Error('Whitelist cannot be empty');
+      throw new Error('Fields list cannot be empty');
     }
-    await formStore.updateWhitelist(selectedFields.value);
-    notificationStore.addNotification({
-      type: NotificationTypes.SUCCESS,
-      message: 'Whitelist updated successfully',
-    });
+    formStore.setFieldsWhitelist(selectedFields.value);
+    loading.value = true;
+    const result = await formStore.updateForm();
+    if (result) {
+      notificationStore.addNotification({
+        text: 'Fields list updated successfully',
+        ...NotificationTypes.SUCCESS,
+      });
+    } else {
+      throw new Error();
+    }
+    editable.value = false;
   } catch (error) {
     notificationStore.addNotification({
-      type: NotificationTypes.ERROR,
-      message: 'Failed to update whitelist' + error,
+      text: 'Failed to update fields list' + error,
+      ...NotificationTypes.ERROR,
     });
   }
+  loading.value = false;
 }
-
-const formStore = useFormStore();
-const isRTL = computed(() => formStore.isRTL);
-const lang = computed(() => formStore.lang);
 
 onMounted(() => {
   selectedFields.value = props.currentWhitelist.map((item) => {
     return {
-      title: transformString(item),
+      title: transformString(item) + '(' + item + ')',
       value: item,
     };
   });
@@ -119,24 +129,73 @@ onMounted(() => {
 
 <template>
   <span :class="{ 'dir-rtl': isRTL }" :lang="lang">
-    <v-select
-      v-model="selectedFields"
-      :disabled="!editable"
-      chips
-      label="Select"
-      :items="initRlsFields"
-      multiple
-      variant="outlined"
-    ></v-select>
-    <v-btn v-if="!editable" icon="$pencil" @click="editable = true">
-      Edit
-    </v-btn>
-    <v-btn v-if="editable" color="primary" @click="updateWhitelist()">
-      Save
-    </v-btn>
-    <v-btn v-if="editable" color="error" @click="editable = false">
-      Cancel
-    </v-btn>
+    <v-expansion-panels v-model="rlsPanel" class="nrmc-expand-collapse">
+      <v-expansion-panel flat>
+        <v-expansion-panel-title>
+          <div class="header" :lang="lang">
+            <strong>RLS fields selection</strong>
+            <span :lang="lang">
+              <v-btn
+                v-if="!editable"
+                size="x-small"
+                variant="text"
+                icon
+                color="primary"
+                style="font-size: 14px"
+                @click.stop="
+                  editable = true;
+                  rlsPanel = 0;
+                "
+              >
+                <v-icon icon="mdi:mdi-pencil"></v-icon>
+              </v-btn>
+            </span>
+          </div>
+        </v-expansion-panel-title>
+
+        <v-expansion-panel-text>
+          <v-col>
+            <h4>
+              Select fields to be available within RLS assignment dropdowns.
+              This is only available for forms without Custom PostgreSQL View.
+            </h4>
+            <p>Default option enables all fields for RLS assignment.</p>
+          </v-col>
+          <v-row class="mt-4">
+            <v-select
+              v-model="selectedFields"
+              :disabled="!editable || loading"
+              chips
+              label="Fields"
+              :items="initRlsFields"
+              multiple
+              variant="outlined"
+              auto
+            ></v-select>
+          </v-row>
+
+          <v-btn
+            v-if="editable"
+            class="mr-2"
+            color="primary"
+            @click="updateWhitelist()"
+          >
+            Save
+          </v-btn>
+          <v-btn
+            v-if="editable"
+            color="error"
+            @click="
+              editable = false;
+              selectedFields = props.currentWhitelist;
+              rlsPanel = 1;
+            "
+          >
+            Cancel
+          </v-btn>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
   </span>
 </template>
 
