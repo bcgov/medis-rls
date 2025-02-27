@@ -6,6 +6,7 @@ import { useFormStore } from '~/store/form';
 import { NotificationTypes } from '~/utils/constants';
 import { useNotificationStore } from '~/store/notification';
 import { rlsService } from '~/services';
+import { LTCHAValues } from '../../utils/constants';
 
 const props = defineProps({
   modelValue: {
@@ -174,7 +175,13 @@ const initializeLocalItemsToRls = async () => {
               lv !== null &&
               (typeof lv === 'string' || lv instanceof String)
           )
-          .map((lv) => ({ title: lv, value: lv }));
+          .map((lv) => {
+            const index = LTCHAValues.findIndex((item) => item.value === lv);
+            return {
+              title: index === -1 ? lv : LTCHAValues[index].label,
+              value: lv,
+            };
+          });
         return { ...rls }; // Ensure a new object is returned to avoid reference issues
       });
     } else {
@@ -220,7 +227,13 @@ const onFieldUpdate = async (index) => {
             lv !== null &&
             (typeof lv === 'string' || lv instanceof String)
         )
-        .map((lv) => ({ title: lv, value: lv }));
+        .map((lv) => {
+          const index = LTCHAValues.findIndex((item) => item.value === lv);
+          return {
+            title: index === -1 ? lv : LTCHAValues[index].label,
+            value: lv,
+          };
+        });
     } else {
       const criteria = {
         formId: props.currentFormId,
@@ -247,7 +260,13 @@ watch(submissionList, async (newSubmissionList) => {
               lv !== null &&
               (typeof lv === 'string' || lv instanceof String)
           )
-          .map((lv) => ({ title: lv, value: lv }));
+          .map((lv) => {
+            const index = LTCHAValues.findIndex((item) => item.value === lv);
+            return {
+              title: index === -1 ? lv : LTCHAValues[index].label,
+              value: lv,
+            };
+          });
         return { ...rls }; // Ensure a new object is returned to avoid reference issues
       });
       nonCustomViewInitLoad.value = false;
@@ -267,7 +286,13 @@ watch(submissionList, async (newSubmissionList) => {
               lv !== null &&
               (typeof lv === 'string' || lv instanceof String)
           )
-          .map((lv) => ({ title: lv, value: lv }));
+          .map((lv) => {
+            const index = LTCHAValues.findIndex((item) => item.value === lv);
+            return {
+              title: index === -1 ? lv : LTCHAValues[index].label,
+              value: lv,
+            };
+          });
       }
     }
   }
