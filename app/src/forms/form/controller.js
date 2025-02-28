@@ -113,8 +113,11 @@ module.exports = {
   readForm: async (req, res, next) => {
     try {
       const response = await service.readForm(req.params.formId, req.query);
-      console.log(response);
-      res.status(200).json(response);
+      const form = {
+        ...response,
+        fieldsWhitelist: response.fieldsWhitelist ? response.fieldsWhitelist.split(',') : [],
+      };
+      res.status(200).json(form);
     } catch (error) {
       next(error);
     }
