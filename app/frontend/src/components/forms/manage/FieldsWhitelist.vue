@@ -118,12 +118,7 @@ async function updateWhitelist() {
 }
 
 onMounted(() => {
-  selectedFields.value = props.currentWhitelist.map((item) => {
-    return {
-      title: transformString(item) + '(' + item + ')',
-      value: item,
-    };
-  });
+  selectedFields.value = props.currentWhitelist;
 });
 </script>
 
@@ -170,7 +165,6 @@ onMounted(() => {
               :items="initRlsFields"
               multiple
               variant="outlined"
-              auto
             ></v-select>
           </v-row>
 
