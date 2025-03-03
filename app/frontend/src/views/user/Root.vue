@@ -1,25 +1,20 @@
 <script setup>
 import { storeToRefs } from 'pinia';
 import { useFormStore } from '~/store/form';
+import { useAuthStore } from '../../store/auth';
 
 const { lang } = storeToRefs(useFormStore());
+const { user } = storeToRefs(useAuthStore());
 </script>
 
 <template>
   <BaseSecure>
-    <router-link :to="{ name: 'UserForms' }">
-      <v-btn color="primary" class="mr-2" data-test="my-forms-btn">
-        <span :lang="lang">{{ $t('trans.user.root.myForms') }}</span>
-        <span :lang="lang">{{ $t('trans.user.root.myForms') }}</span>
-      </v-btn>
-    </router-link>
-    <router-link :to="{ name: 'UserHistory' }">
-      <v-btn color="primary" class="mr-2" data-test="history-btn">
-        <span :lang="lang">{{ $t('trans.user.root.history') }}</span>
-      </v-btn>
-    </router-link>
     <h1 class="text-center" :lang="lang">
-      {{ $t('trans.user.root.user') }}
+      {{ $t('trans.user.root.user') }}: {{ user.username }}
     </h1>
+    <p class="text-center">
+      Your user profile has been successfully created within the RLS
+      application.
+    </p>
   </BaseSecure>
 </template>
