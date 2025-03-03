@@ -16,7 +16,8 @@ const { isRTL, lang } = storeToRefs(formStore);
       <v-row justify="center">
         <v-col lg="8">
           <h1 class="my-5 d-block" :locale="lang">
-            PCD BI Modernization Project: MEDIS RLS
+            Ministry Enterprise Data Importing Solution Row Level Security
+            Services
           </h1>
           <p :locale="lang">
             The RLS (Row Level Security) service is a service that CHEFS forms
