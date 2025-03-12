@@ -7,6 +7,7 @@ const rateLimiter = require('../common/middleware').apiKeyRateLimiter;
 
 const jwtService = require('../../components/jwtService');
 const controller = require('./controller');
+const externalApiAccess = require('../auth/middleware/externalApiAccess');
 
 routes.use(currentUser);
 
@@ -44,6 +45,11 @@ routes.get('/:formId/documentTemplates/:documentTemplateId', rateLimiter, apiAcc
 });
 
 routes.get('/:formId/export', rateLimiter, apiAccess, hasFormPermissions([P.FORM_READ, P.SUBMISSION_READ]), async (req, res, next) => {
+  await controller.export(req, res, next);
+});
+
+// External API only endpoint
+routes.get('/:formId/norls/export', rateLimiter, externalApiAccess, async (req, res, next) => {
   await controller.export(req, res, next);
 });
 

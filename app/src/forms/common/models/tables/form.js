@@ -137,6 +137,7 @@ class Form extends Timestamps(Model) {
       'apiIntegration',
       'useCase',
       'remote',
+      'fieldsWhitelist',
     ];
   }
 
@@ -167,6 +168,7 @@ class Form extends Timestamps(Model) {
         apiIntegration: { type: 'boolean' },
         useCase: { type: 'string', minLength: 1, maxLength: 25 },
         remote: { type: 'boolean' },
+        fieldsWhitelist: { type: 'string', maxLength: 1000 },
         custom_view_name: { type: ['string', 'null'], maxLength: 1000 },
         ...stamps,
       },

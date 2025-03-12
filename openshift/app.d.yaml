@@ -1,0 +1,194 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"StatefulSet","name":"rls-patroni-${{ ENVIRONMENT }}"}]'
+    deployment.kubernetes.io/revision: "16"
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"medis-rls:${{ IMAGE_TAG }}","namespace":"${{ TOOL_NAMESPACE }}"},"fieldPath":"spec.template.spec.containers[?(@.name==\"app\")].image","pause":"false"}]'
+  name: medis-rls-app
+  labels:
+    app: medis-rls
+    app.kubernetes.io/component: app
+    app.kubernetes.io/instance: medis-rls
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/name: nodejs
+    app.kubernetes.io/part-of: medis-rls
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: medis-rls
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: medis-rls
+        role: app
+    spec:
+      volumes:
+        - name: log-storage
+          emptyDir: {}
+      containers:
+        - resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /app/api
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 1
+          terminationMessagePath: /dev/termination-log
+          name: app
+          livenessProbe:
+            httpGet:
+              path: /app/api
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: ${{ DATABASE_SECRET_NAME }}
+                  key: app-db-name
+            - name: DB_HOST
+              value: ${{ DATABASE_SECRET_NAME }}
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ${{ DATABASE_SECRET_NAME }}
+                  key: app-db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ${{ DATABASE_SECRET_NAME }}
+                  key: app-db-password
+            - name: FRONTEND_BASEPATH
+              value: /app
+            - name: VITE_FRONTEND_BASEPATH
+              value: /app
+            - name: VITE_CONTACT
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-contact-secret
+                  key: email
+            - name: VITE_HOWTOURL
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-landingpagevideourls-secret
+                  key: howtovideourl
+            - name: VITE_CHEFSTOURURL
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-landingpagevideourls-secret
+                  key: chefstourvideourl
+            - name: VITE_CHEFS_GEO_ADDRESS_APIURL
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-bcgeoaddress-secret
+                  key: chefsgeoaddressapiurl
+            - name: VITE_CHEFS_ADVANCE_GEO_ADDRESS_APIURL
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-bcgeoaddress-secret
+                  key: chefsadvancegeoaddressapiurl
+            - name: VITE_BC_GEO_ADDRESS_APIURL
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-bcgeoaddress-secret
+                  key: bcgeoaddressapiurl
+            - name: SERVER_BASEPATH
+              value: /app
+            - name: SC_CS_CHES_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-sc-cs-secret
+                  key: ches_client_id
+            - name: SC_CS_CHES_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-sc-cs-secret
+                  key: ches_client_secret
+            - name: SC_CS_CDOGS_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-sc-cs-secret
+                  key: cdogs_client_id
+            - name: SC_CS_CDOGS_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-sc-cs-secret
+                  key: cdogs_client_secret
+            - name: FILES_OBJECTSTORAGE_ACCESSKEYID
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-objectstorage-secret
+                  key: username
+            - name: FILES_OBJECTSTORAGE_SECRETACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-objectstorage-secret
+                  key: password
+            - name: APITOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-secret
+                  key: mailapitoken
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-secret
+                  key: webhooksecret
+            - name: EXTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medis-rls-secret
+                  key: externalapikey
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: File
+          envFrom:
+            - configMapRef:
+                name: medis-rls-frontend-config
+            - configMapRef:
+                name: medis-rls-sc-config
+            - configMapRef:
+                name: medis-rls-server-config
+            - configMapRef:
+                name: medis-rls-service-config
+            - configMapRef:
+                name: medis-rls-files-config
+            - configMapRef:
+                name: medis-rls-oidc-config
+            - configMapRef:
+                name: medis-rls-custombcaddressformiocomponent-config
+          image: ${{ IMAGE_LINK }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600

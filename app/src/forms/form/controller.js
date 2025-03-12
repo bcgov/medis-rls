@@ -113,7 +113,11 @@ module.exports = {
   readForm: async (req, res, next) => {
     try {
       const response = await service.readForm(req.params.formId, req.query);
-      res.status(200).json(response);
+      const form = {
+        ...response,
+        fieldsWhitelist: response.fieldsWhitelist ? response.fieldsWhitelist.split(',') : [],
+      };
+      res.status(200).json(form);
     } catch (error) {
       next(error);
     }
@@ -144,6 +148,7 @@ module.exports = {
       const response = await service.updateForm(req.params.formId, req.body, req.currentUser);
       res.status(200).json(response);
     } catch (error) {
+      console.error(error);
       next(error);
     }
   },

@@ -171,3 +171,17 @@ export const ExportLargeData = Object.freeze({
   MAX_RECORDS: 300, // Maximum number of submissions after that we gonna upload the export to Cloud and send user a download link via email
   MAX_FIELDS: 30, // Maximum number of fields in a form after that we gonna upload the export to Cloud and send user a download link via email
 });
+
+export const LTCHAValues = [
+  { label: '2 Fraser (FHA)', value: '2 Fraser (FHA) - 2FraserFha' },
+  { label: '1 Interior (IHA)', value: '1 Interior (IHA) - 1InteriorIha' },
+  { label: '5 Northern (NHA)', value: '5 Northern (NHA) - 5NorthernNha' },
+  {
+    label: '3 Vancouver Coastal (VCH)',
+    value: '3 Vancouver Coastal (VCH) - 3VancouverCoastalVch',
+  },
+  {
+    label: '4 Vancouver Island (VIHA)',
+    value: '4 Vancouver Island (VIHA) - 4VancouverIslandViha',
+  },
+];

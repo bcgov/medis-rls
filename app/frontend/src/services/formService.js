@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { appAxios } from '~/services/interceptors';
 import { ApiRoutes } from '~/utils/constants';
 
@@ -375,7 +376,7 @@ export default {
    */
   listSubmissions(formId, params = {}) {
     return appAxios().get(`${ApiRoutes.FORMS}/${formId}/submissions`, {
-      params,
+      params: params.fields ? params : _.omit(params, 'fields'),
     });
   },
 
