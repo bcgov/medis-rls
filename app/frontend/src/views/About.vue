@@ -11,20 +11,21 @@ const { isRTL, lang } = storeToRefs(formStore);
 </script>
 
 <template>
-  <div class="about-layout" :class="{ 'dir-rtl': isRTL }">
-    <v-sheet class="help-highlight pa-5 text-center">
+  <div class="about-layout help-highlight" :class="{ 'dir-rtl': isRTL }">
+    <v-sheet class="pa-5 text-center">
       <v-row justify="center">
         <v-col lg="8">
-          <h1 class="my-5 d-block" :locale="lang">
-            Ministry Enterprise Data Importing Solution Row Level Security
-            Services
-          </h1>
+          <h3 class="my-5 d-block" :locale="lang">
+            Ministry Enterprise Data Importing Solution (MEDIS)
+          </h3>
+          <h3 class="my-5 d-block" :locale="lang">
+            Row Level Security (RLS) Services
+          </h3>
           <p :locale="lang">
-            The RLS (Row Level Security) service is a service that CHEFS forms
-            can use to apply data permissions to restrict the data users have
-            access to based on their group/organization. The RLS service also
-            provides an administrative UI interface for team managers to manage
-            users’ data permissions, and the submissions they have access to.
+            The RLS (Row Level Security) service provides the ability to
+            restrict user data access based on their group/organization within
+            CHEFS forms and an administrative UI for team managers to manage
+            user permissions and access to submissions.
           </p>
 
           <v-btn
