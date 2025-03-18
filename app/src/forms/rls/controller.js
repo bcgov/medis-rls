@@ -53,7 +53,7 @@ module.exports = {
       if (!userRls) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
-      const response = await service.listRlsByUserIdAndInternalFormId(userRls.id, req.params.formId);
+      const response = await service.listRlsByUserIdAndInternalFormId(userRls.id, formId);
 
       const responseWithoutIdAndUserId = response.map((r) => _.omit(r, ['id', 'userId', 'createdBy', 'updatedBy', 'createdAt', 'updatedAt', 'customViewName']));
 
