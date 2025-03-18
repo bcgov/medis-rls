@@ -170,9 +170,9 @@ export async function preFlightAuth(options = {}, next) {
     if (idpHint === IdentityMode.PUBLIC) {
       next(); // Permit navigation if public form
     } else if (isValidIdpHint(idpHint)) {
-      authStore.login(idpHint); // Force login flow with specified idpHint
+      await authStore.login(idpHint); // Force login flow with specified idpHint
     } else {
-      authStore.login(); // Force login flow with user choice
+      await authStore.login(); // Force login flow with user choice
     }
   }
 }
