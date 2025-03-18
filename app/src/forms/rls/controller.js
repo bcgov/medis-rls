@@ -19,21 +19,27 @@ module.exports = {
       let apikeyIncome = req.headers.apikey;
 
       if (apikeyIncome === undefined || apikeyIncome === '' || !apikeyIncome) {
-        return res.status(401).json({ message: 'No API key provided' });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
       const incomingRlsKey = apikeyIncome.split(':')[0];
       const incomingFormKey = apikeyIncome.split(':')[1];
 
       if (!incomingFormKey || !incomingRlsKey) {
-        return res.status(401).json({ message: 'No API key provided' });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const formId = req.params.formId;
+      if (req.params.formId === 'form' && !req.query?.extFormId) {
+        return res.status(400).json({ message: 'Bad request' });
+      }
+
+      // use the query param to get the formId
+      // TODO: make it consistent across all CHEFS endpoints to use the query
+      const formId = req.params.formId === 'form' ? req.query?.extFormId : req.params.formId;
       const formApiKey = await formService.readApiKey(formId);
 
       if (formApiKey.secret !== incomingFormKey || incomingRlsKey !== apikeyEnv) {
-        return res.status(401).json({ message: 'Invalid API key' });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
       const idpUserId = req.headers['x-chefs-user-userid'];
@@ -45,7 +51,7 @@ module.exports = {
       const userRls = await userService.readByIdpUserId(idpUserId);
 
       if (!userRls) {
-        return res.status(401).json({ message: 'User not found' });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
       const response = await service.listRlsByUserIdAndInternalFormId(userRls.id, req.params.formId);
 
