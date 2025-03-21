@@ -12,6 +12,10 @@ routes.get('/:formId', jwtService.protect(), async (req, res, next) => {
   await controller.list(req, res, next);
 });
 
+routes.get('/:formId/current', async (req, res, next) => {
+  await controller.listCurrentUserRoles(req, res, next);
+});
+
 routes.post('/:formId', hasFormPermissions([P.TEAM_UPDATE]), hasFormRoles([R.OWNER, R.TEAM_MANAGER]), async (req, res, next) => {
   await controller.create(req, res, next);
 });

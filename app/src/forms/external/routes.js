@@ -14,6 +14,8 @@ routes.use('/submissions', (req, res, next) => {
         apikeyIncome = apikeyIncome.split(':')[0];
       }
       req.extFormApiKey = extFormApiKey;
+      console.log('apikeyIncome:', apikeyIncome);
+      console.log('extFormApiKey:', extFormApiKey);
       if (apikeyIncome === undefined || apikeyIncome === '' || !apikeyIncome) {
         return res.status(401).json({ message: 'No API key provided' });
       }
@@ -26,12 +28,17 @@ routes.use('/submissions', (req, res, next) => {
       return res.status(404).json({ message: 'Only GET request is accepted' });
     }
   } catch (err) {
+    console.error('Error in listFormSubmissions:', err);
     return res.status(500).json({ message: err.message });
   }
 });
 
 routes.get('/submissions', async (req, res, next) => {
   await controller.listFormSubmissions(req, res, next);
+});
+
+routes.get('/listSubmissions', async (req, res, next) => {
+  await controller.listFormSubmissionsWithFields(req, res, next);
 });
 
 module.exports = routes;
