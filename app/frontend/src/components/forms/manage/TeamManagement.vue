@@ -154,7 +154,6 @@ export default {
     ...mapActions(useIdpStore, ['findByCode']),
     async loadItems() {
       this.loading = true;
-
       await Promise.all([
         await this.fetchForm(this.formId),
         await this.getFormPermissionsForUser(this.formId),
@@ -874,6 +873,7 @@ export default {
     </BaseDialog>
 
     <BaseRls
+      v-if="showRLSDialog"
       v-model="showRLSDialog"
       :forms="formList"
       :items-to-rls="itemsToRls"
