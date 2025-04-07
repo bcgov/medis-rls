@@ -320,11 +320,11 @@ const findMatchingValues = (obj, key, results = []) => {
 };
 
 const checkUniqueSelectValues = (values) => {
-  const allSelectedValues = [];
+  let allSelectedValues = [];
   if (Array.isArray(localItemsToRls?.value)) {
     localItemsToRls.value.forEach((item) => {
       if (item && item.value) {
-        allSelectedValues.push(item.value.value);
+        allSelectedValues.push(item.value);
       }
     });
   }
