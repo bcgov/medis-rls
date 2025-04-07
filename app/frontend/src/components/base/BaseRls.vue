@@ -144,17 +144,18 @@ const initRlsFields = computed(() => {
       });
     }
   } else {
-    if (Object.keys(form.value.fieldsWhitelist).length > 0) {
-      humanWords = transformStrings(Object.values(form.value.fieldsWhitelist));
-      return Object.values(form.value.fieldsWhitelist).map((f, i) => {
+    humanWords = transformStrings(props.currentFormFields);
+    return props.currentFormFields
+      .map((f, i) => {
         return { title: humanWords[i], value: f };
+      })
+      .filter((item) => {
+        if (form.value.fieldsWhitelist) {
+          return form.value.fieldsWhitelist.includes(item.value);
+        } else {
+          return true;
+        }
       });
-    } else {
-      humanWords = transformStrings(props.currentFormFields);
-      return props.currentFormFields.map((f, i) => {
-        return { title: humanWords[i], value: f };
-      });
-    }
   }
 });
 
@@ -193,12 +194,6 @@ const initializeLocalItemsToRls = async () => {
       await formStore.fetchSubmissions(criteria);
     }
   } else {
-    const criteria = {
-      formId: props.currentFormId,
-      formFields: props.currentFormFields,
-      noRls: true,
-    };
-    await formStore.fetchSubmissions(criteria);
     localItemsToRls.value = [
       {
         id: null,
@@ -215,7 +210,7 @@ const initializeLocalItemsToRls = async () => {
 };
 
 const onFieldUpdate = async (index) => {
-  const selectedField = localItemsToRls?.value[index]?.field;
+  const selectedField = localItemsToRls.value[index].field;
   currentIndex.value = index;
   if (selectedField) {
     localItemsToRls.value[index].value = null;
@@ -276,7 +271,7 @@ watch(submissionList, async (newSubmissionList) => {
       });
       nonCustomViewInitLoad.value = false;
     } else {
-      const selectedField = localItemsToRls.value[currentIndex.value]?.field;
+      const selectedField = localItemsToRls.value[currentIndex.value].field;
       if (selectedField) {
         localItemsToRls.value[currentIndex.value].value = null;
         localValues.value[currentIndex.value] = [];
@@ -284,8 +279,7 @@ watch(submissionList, async (newSubmissionList) => {
 
         const tempValues = findMatchingValues(newSubmissionList, selectedField);
         const uniqueValues = [...new Set(tempValues)].sort();
-        const allValusNotSelected = checkUniqueSelectValues(uniqueValues);
-        localValues.value[currentIndex.value] = allValusNotSelected
+        localValues.value[currentIndex.value] = uniqueValues
           .filter(
             (lv) =>
               lv !== '' &&
@@ -317,18 +311,6 @@ const findMatchingValues = (obj, key, results = []) => {
     }
   }
   return results;
-};
-
-const checkUniqueSelectValues = (values) => {
-  let allSelectedValues = [];
-  if (Array.isArray(localItemsToRls?.value)) {
-    localItemsToRls.value.forEach((item) => {
-      if (item && item.value) {
-        allSelectedValues.push(item.value);
-      }
-    });
-  }
-  return values.filter((item) => !allSelectedValues.includes(item));
 };
 
 function transformStrings(array) {
@@ -390,7 +372,6 @@ function continueDialog() {
 
 function deleteRls(index) {
   localItemsToRls.value.splice(index, 1);
-  localValues.value.splice(index, 1);
 }
 
 function deleteAllRls() {
