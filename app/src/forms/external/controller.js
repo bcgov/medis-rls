@@ -31,6 +31,7 @@ module.exports = {
         const remoteSubmissionData = await axiosInstance.get(`${CHEFS_API_ENDPOINT}/forms/${formId}/export?format=json&type=submissions`);
         res.status(200).json(remoteSubmissionData?.data);
       } else {
+        console.info("User " + idpUserId + " is getting Form " + formId);
         const response = await formService.listFormSubmissions(formId, req.query, userRls, remoteFormId, true);
         res.status(200).json(response);
       }
