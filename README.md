@@ -73,3 +73,17 @@ Please note that this project is released with a [Contributor Code of Conduct](C
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
+
+## Build
+
+To build the application locally use:
+
+```
+docker build . -t medis-rls:latest
+```
+
+If you are using a machine with an arm64 architecture use:
+
+```
+docker build . -f Dockerfile.local -t medis-rls:latest
+```

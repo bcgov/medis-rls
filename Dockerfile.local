@@ -1,4 +1,7 @@
-FROM docker.io/node:22-alpine
+# Uses the official Node.js 22 image as a parent image instead of the slim variant to avoid issues with missing libraries in Alpine.
+# The missing libraries can cause problems when running certain Node.js applications or dependencies that rely on native modules.
+# For example, on arm64 architecture, some native modules may not compile correctly on Alpine due to the absence of required libraries.
+FROM docker.io/node:22
 
 ENV NO_UPDATE_NOTIFIER=true
 WORKDIR /opt/app-root/src/app
