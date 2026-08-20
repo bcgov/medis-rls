@@ -46,7 +46,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18.x"
+          node-version: "22.x"
           cache: "npm"
           # Since all node modules is stored in the main directory, we need to
           # use the package-lock.json from the main directory
@@ -80,7 +80,6 @@ jobs:
           image: "medis-rls"
           tags: ${{ steps.extract_branch.outputs.branch}}
           containerfiles: /Dockerfile
-          tls-verify: false
           extra-args: --ulimit nofile=4096:4096
       # Push to specified registry
       - name: Push Static To OpenShift Image repo
