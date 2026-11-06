@@ -93,13 +93,13 @@ app.use((err, _req, res, _next) => {
     log.error(err);
   }
 
+  // Only reset the DB connection pool when the database itself is the problem.
+  // Upstream HTTP failures and plain application errors leave the pool alone.
+  if (!state.shutdown && DataConnection.isDatabaseError(err)) dataConnection.resetConnection();
+
   if (err instanceof Problem) {
-    // Attempt to reset DB connection if 5xx error
-    if (err.status >= 500 && !state.shutdown) dataConnection.resetConnection();
     err.send(res, null);
   } else {
-    // Attempt to reset DB connection
-    if (!state.shutdown) dataConnection.resetConnection();
     new Problem(500, 'Server Error', {
       detail: err.message ? err.message : err,
     }).send(res);
