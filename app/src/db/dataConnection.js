@@ -1,5 +1,5 @@
 const Knex = require('knex');
-const { Model } = require('objection');
+const { DBError, Model } = require('objection');
 
 const knexfile = require('../../knexfile');
 const log = require('../components/log')(module.filename);
@@ -144,6 +144,31 @@ class DataConnection {
         log.error(e);
       }
     }
+  }
+
+  /**
+   * @function isDatabaseError
+   * Whether an error indicates a problem with the database connection itself,
+   * as opposed to an application error or a failed call to another service.
+   * Only these errors warrant resetting the connection pool.
+   * @param {Error} err
+   * @returns {boolean}
+   */
+  static isDatabaseError(err) {
+    if (!err || typeof err !== 'object') return false;
+    // Outbound HTTP (axios) failures share codes like ECONNRESET with pg, so
+    // rule them out first.
+    if (err.isAxiosError) return false;
+    if (err instanceof DBError) return true;
+    if (err.name === 'KnexTimeoutError') return true;
+    if (typeof err.code === 'string') {
+      // pg connection exceptions (08xxx), admin shutdown (57P01), crash
+      // shutdown (57P02), cannot connect now (57P03), too many connections
+      // (53300), plus socket-level failures from the pg driver.
+      if (/^08/.test(err.code) || ['57P01', '57P02', '57P03', '53300'].includes(err.code)) return true;
+      if (['ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENOTFOUND'].includes(err.code)) return true;
+    }
+    return /connection (terminated|ended|refused|timed out)|timeout acquiring a connection|pool is probably full|terminating connection/i.test(err.message || '');
   }
 
   /**
