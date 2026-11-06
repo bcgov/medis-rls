@@ -1,6 +1,7 @@
 const axios = require('axios');
 const config = require('config');
 const service = require('./service');
+const log = require('../../components/log')(module.filename);
 
 const CHEFS_API_ENDPOINT = 'https://submit.digital.gov.bc.ca/app/api/v1';
 
@@ -55,8 +56,8 @@ module.exports = {
         res.status(400).json({ message: 'Bad request' });
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log(error);
+      // Log the message only: axios errors carry the request config, including the Authorization header.
+      log.error(`Webhook failed: ${error?.message}`, { function: 'webhooks' });
       res.status(500).json({ message: 'Webhook executed but something went wrong...' });
     }
   },
