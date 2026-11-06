@@ -1,6 +1,7 @@
 const routes = require('express').Router();
 const controller = require('./controller');
 const config = require('config');
+const upstream = require('./upstream');
 
 routes.use('/submissions', (req, res, next) => {
   // eslint-disable-next-line no-empty
@@ -40,5 +41,9 @@ routes.get('/submissions', async (req, res, next) => {
 routes.get('/listSubmissions', async (req, res, next) => {
   await controller.listFormSubmissionsWithFields(req, res, next);
 });
+
+// Answer upstream (CHEFS) failures with a 502/504 here so they never reach the
+// global error handler, which resets the database connection pool.
+routes.use(upstream.errorHandler);
 
 module.exports = routes;

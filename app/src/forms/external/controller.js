@@ -1,11 +1,9 @@
-const axios = require('axios');
 const formService = require('../form/service');
 const userService = require('../user/service');
 const rlsService = require('../rls/service');
 const config = require('config');
 const _ = require('lodash');
-
-const CHEFS_API_ENDPOINT = 'https://submit.digital.gov.bc.ca/app/api/v1';
+const { buildFormUrl, createUpstreamClient, getWithRetry, isValidFormId } = require('./upstream');
 
 module.exports = {
   listFormSubmissions: async (req, res, next) => {
@@ -16,21 +14,12 @@ module.exports = {
       const formId = req.query?.extFormId;
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
-        const axiosOptions = { timeout: 10000 };
-        const axiosInstance = axios.create(axiosOptions);
-        const basicAuthEncoded = Buffer.from(formId + ':' + req.extFormApiKey).toString('base64');
-        axiosInstance.interceptors.request.use(
-          (cfg) => {
-            cfg.headers = { authorization: `Basic ${basicAuthEncoded}` };
-            return Promise.resolve(cfg);
-          },
-          (error) => {
-            return Promise.reject(error);
-          }
-        );
-        const remoteSubmissionData = await axiosInstance.get(`${CHEFS_API_ENDPOINT}/forms/${formId}/export?format=json&type=submissions`);
+        if (!isValidFormId(formId)) return res.status(400).json({ message: 'Invalid extFormId' });
+        const upstream = createUpstreamClient(formId, req.extFormApiKey);
+        const remoteSubmissionData = await getWithRetry(upstream, buildFormUrl(formId, 'export', { format: 'json', type: 'submissions' }));
         res.status(200).json(remoteSubmissionData?.data);
       } else {
+        console.info('User ' + idpUserId + ' is getting Form ' + formId);
         const response = await formService.listFormSubmissions(formId, req.query, userRls, remoteFormId, true);
         res.status(200).json(response);
       }
@@ -62,20 +51,10 @@ module.exports = {
 
       // if req.extFormApiKey exist we need to fetch CHEFS submission data instead
       if (req.extFormApiKey) {
+        if (!isValidFormId(formId)) return res.status(400).json({ message: 'Invalid extFormId' });
         const queries = req.query;
         let queriesOptionsWithoutId = _.omit(queries, ['extFormId', 'filter']);
-        const axiosOptions = { timeout: 10000 };
-        const axiosInstance = axios.create(axiosOptions);
-        const basicAuthEncoded = Buffer.from(formId + ':' + req.extFormApiKey).toString('base64');
-        axiosInstance.interceptors.request.use(
-          (cfg) => {
-            cfg.headers = { authorization: `Basic ${basicAuthEncoded}` };
-            return Promise.resolve(cfg);
-          },
-          (error) => {
-            return Promise.reject(error);
-          }
-        );
+        const upstream = createUpstreamClient(formId, req.extFormApiKey);
         const roles = await rlsService.listRlsByUserIdAndRemoteFormId(userRls.id, formId);
 
         if (roles.length > 0) {
@@ -85,9 +64,7 @@ module.exports = {
           };
         }
 
-        const remoteSubmissionData = await axiosInstance.get(
-          `${CHEFS_API_ENDPOINT}/forms/${formId}/submissions${queriesOptionsWithoutId ? `?${new URLSearchParams(queriesOptionsWithoutId).toString()}` : ''}`
-        );
+        const remoteSubmissionData = await getWithRetry(upstream, buildFormUrl(formId, 'submissions', queriesOptionsWithoutId));
 
         if (!filter) {
           return res.status(200).json(remoteSubmissionData?.data);
