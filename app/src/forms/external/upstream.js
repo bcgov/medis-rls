@@ -40,6 +40,47 @@ const isRetryable = (err) => {
   return err.response.status >= 500 || err.response.status === 429;
 };
 
+/** Only calls to this origin and path prefix are ever allowed. */
+const CHEFS_API_BASE = 'https://submit.digital.gov.bc.ca/app/api/v1';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * @function isValidFormId
+ * CHEFS form ids are UUIDs. Rejecting anything else keeps user input from
+ * altering the path of the upstream request.
+ */
+const isValidFormId = (formId) => typeof formId === 'string' && UUID_REGEX.test(formId);
+
+/**
+ * @function buildFormUrl
+ * Builds a CHEFS URL for a form from validated parts. The form id is
+ * validated and encoded, and query values are encoded by URLSearchParams.
+ * @param {string} formId must be a UUID
+ * @param {string} resource fixed path suffix, e.g. 'submissions'
+ * @param {object} [query] query parameters
+ * @throws {Error} when the form id is not a UUID
+ */
+const buildFormUrl = (formId, resource, query) => {
+  if (!isValidFormId(formId)) throw new TypeError('Invalid form id');
+  const url = new URL(`${CHEFS_API_BASE}/forms/${encodeURIComponent(formId)}/${resource}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null) url.searchParams.append(key, String(value));
+    }
+  }
+  return url.toString();
+};
+
+/** Throws unless the URL points inside the CHEFS API. */
+const assertAllowedUrl = (url) => {
+  const parsed = new URL(url);
+  const base = new URL(CHEFS_API_BASE);
+  if (parsed.origin !== base.origin || !parsed.pathname.startsWith(`${base.pathname}/`) || parsed.pathname.includes('..')) {
+    throw new TypeError('Upstream URL is not allowed');
+  }
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -75,6 +116,7 @@ const createUpstreamClient = (username, password, options = {}) => {
  * @param {number} [options.retryDelayMs] Base delay between attempts
  */
 const getWithRetry = async (client, url, options = {}) => {
+  assertAllowedUrl(url);
   const maxAttempts = Math.max(1, options.maxAttempts ?? UPSTREAM_MAX_ATTEMPTS);
   const retryDelayMs = options.retryDelayMs ?? UPSTREAM_RETRY_DELAY_MS;
 
@@ -149,6 +191,10 @@ const errorHandler = (err, _req, res, next) => {
 };
 
 module.exports = {
+  CHEFS_API_BASE,
+  assertAllowedUrl,
+  buildFormUrl,
+  isValidFormId,
   UPSTREAM_TIMEOUT_MS,
   UPSTREAM_MAX_ATTEMPTS,
   UPSTREAM_RETRY_DELAY_MS,

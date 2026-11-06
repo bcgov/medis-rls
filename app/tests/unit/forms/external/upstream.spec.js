@@ -3,13 +3,15 @@ const { getMockRes } = require('@jest-mock/express');
 
 const upstream = require('../../../../src/forms/external/upstream');
 
+const CHEFS_URL = `${upstream.CHEFS_API_BASE}/forms`;
+
 const axiosError = (overrides = {}) => Object.assign(new Error(overrides.message || 'upstream failed'), { isAxiosError: true }, overrides);
 
 describe('upstream.getWithRetry', () => {
   it('returns the first successful response without retrying', async () => {
     const client = { get: jest.fn().mockResolvedValue({ data: 'ok' }) };
 
-    const result = await upstream.getWithRetry(client, 'http://chefs/forms', { retryDelayMs: 0 });
+    const result = await upstream.getWithRetry(client, CHEFS_URL, { retryDelayMs: 0 });
 
     expect(result).toEqual({ data: 'ok' });
     expect(client.get).toBeCalledTimes(1);
@@ -24,7 +26,7 @@ describe('upstream.getWithRetry', () => {
         .mockResolvedValue({ data: 'ok' }),
     };
 
-    const result = await upstream.getWithRetry(client, 'http://chefs/forms', { maxAttempts: 3, retryDelayMs: 0 });
+    const result = await upstream.getWithRetry(client, CHEFS_URL, { maxAttempts: 3, retryDelayMs: 0 });
 
     expect(result).toEqual({ data: 'ok' });
     expect(client.get).toBeCalledTimes(3);
@@ -34,7 +36,7 @@ describe('upstream.getWithRetry', () => {
     const err = axiosError({ code: 'ECONNABORTED', message: 'timeout of 10000ms exceeded' });
     const client = { get: jest.fn().mockRejectedValue(err) };
 
-    await expect(upstream.getWithRetry(client, 'http://chefs/forms', { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
+    await expect(upstream.getWithRetry(client, CHEFS_URL, { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
     expect(client.get).toBeCalledTimes(3);
   });
 
@@ -42,7 +44,7 @@ describe('upstream.getWithRetry', () => {
     const err = axiosError({ response: { status: 401 } });
     const client = { get: jest.fn().mockRejectedValue(err) };
 
-    await expect(upstream.getWithRetry(client, 'http://chefs/forms', { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
+    await expect(upstream.getWithRetry(client, CHEFS_URL, { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
     expect(client.get).toBeCalledTimes(1);
   });
 
@@ -50,7 +52,7 @@ describe('upstream.getWithRetry', () => {
     const err = new Error('database exploded');
     const client = { get: jest.fn().mockRejectedValue(err) };
 
-    await expect(upstream.getWithRetry(client, 'http://chefs/forms', { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
+    await expect(upstream.getWithRetry(client, CHEFS_URL, { maxAttempts: 3, retryDelayMs: 0 })).rejects.toBe(err);
     expect(client.get).toBeCalledTimes(1);
   });
 });
@@ -107,5 +109,29 @@ describe('upstream.errorHandler', () => {
 
     expect(next).toBeCalledWith(err);
     expect(res.writeHead).not.toBeCalled();
+  });
+});
+
+describe('upstream URL hardening', () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000';
+
+  it('builds an encoded URL for a valid form id', () => {
+    expect(upstream.buildFormUrl(id, 'submissions', { fields: 'a,b', skip: undefined })).toBe(`${upstream.CHEFS_API_BASE}/forms/${id}/submissions?fields=a%2Cb`);
+  });
+
+  it.each(['../../admin', `${id}/../x`, `${id}?x=1`, `${id}#`, '', undefined, ['a']])('rejects the form id %p', (bad) => {
+    expect(upstream.isValidFormId(bad)).toBe(false);
+    expect(() => upstream.buildFormUrl(bad, 'submissions')).toThrow('Invalid form id');
+  });
+
+  it.each([
+    'https://evil.example.com/app/api/v1/forms/x',
+    'http://submit.digital.gov.bc.ca/app/api/v1/forms/x',
+    `${upstream.CHEFS_API_BASE}/../admin`,
+    'https://submit.digital.gov.bc.ca.evil.com/app/api/v1/x',
+  ])('getWithRetry refuses %s without calling the client', async (url) => {
+    const client = { get: jest.fn() };
+    await expect(upstream.getWithRetry(client, url)).rejects.toThrow();
+    expect(client.get).not.toBeCalled();
   });
 });
