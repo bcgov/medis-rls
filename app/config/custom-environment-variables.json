@@ -51,6 +51,10 @@
       "audience": "OIDC_CLIENTID",
       "maxTokenAge": "OIDC_MAXTOKENAGE"
     },
+    "externalCache": {
+      "ttlMs": "EXTERNAL_CACHE_TTL_MS",
+      "maxEntries": "EXTERNAL_CACHE_MAX_ENTRIES"
+    },
     "logFile": "SERVER_LOGFILE",
     "logLevel": "SERVER_LOGLEVEL",
     "port": "SERVER_PORT",
