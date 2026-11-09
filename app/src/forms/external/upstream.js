@@ -1,6 +1,8 @@
 const axios = require('axios');
+const config = require('config');
 const Problem = require('api-problem');
 
+const { createCache, makeKey } = require('../../components/cache');
 const log = require('../../components/log')(module.filename);
 
 /** Per-attempt timeout for a call to CHEFS, in milliseconds. */
@@ -141,6 +143,65 @@ const getWithRetry = async (client, url, options = {}) => {
 };
 
 /**
+ * Cache of successful CHEFS responses. In-process, so each replica has its own.
+ * Configured with server.externalCache.ttlMs and server.externalCache.maxEntries;
+ * a ttl of 0 turns it off.
+ */
+const upstreamCache = createCache({
+  name: 'external-chefs',
+  ttlMs: config.get('server.externalCache.ttlMs'),
+  maxEntries: config.get('server.externalCache.maxEntries'),
+});
+
+/**
+ * @function cachedGet
+ * Fetches a CHEFS form resource, serving it from the cache when a fresh copy
+ * exists and sharing one upstream call between concurrent identical requests.
+ * Only the response body is cached, never per-user results, so callers must do
+ * any user-specific filtering after this call. The credential is part of the
+ * cache key (hashed), so a caller with a wrong secret can never be served data
+ * cached for the right one.
+ * @param {object} params
+ * @param {string} params.formId CHEFS form UUID
+ * @param {string} params.secret CHEFS API key secret for the form
+ * @param {string} params.resource Path suffix such as 'submissions' or 'export'
+ * @param {object} [params.query] Query parameters
+ * @param {string} [params.requestId] Correlation id for log output
+ * @returns {Promise<{data: *, cache: string, ageMs: number, durationMs: number}>}
+ */
+const cachedGet = async ({ formId, secret, resource, query, requestId }) => {
+  const url = buildFormUrl(formId, resource, query);
+  const key = makeKey('chefs', formId, resource, query || {}, secret);
+  const started = Date.now();
+  const meta = { function: 'cachedGet', requestId, formId, resource };
+  try {
+    const result = await upstreamCache.wrap(key, async () => {
+      const response = await getWithRetry(createUpstreamClient(formId, secret), url);
+      return response?.data;
+    });
+    const durationMs = Date.now() - started;
+    log.info(`CHEFS ${resource} for form ${formId}: cache ${result.status} in ${durationMs}ms`, {
+      ...meta,
+      cache: result.status,
+      cacheAgeMs: result.status === 'hit' ? result.ageMs : undefined,
+      durationMs,
+      records: Array.isArray(result.value) ? result.value.length : undefined,
+      cacheStats: upstreamCache.stats(),
+    });
+    return { data: result.value, cache: result.status, ageMs: result.ageMs, durationMs };
+  } catch (err) {
+    log.warn(`CHEFS ${resource} for form ${formId} failed after ${Date.now() - started}ms: ${err.message}`, {
+      ...meta,
+      durationMs: Date.now() - started,
+      status: err.response?.status,
+      code: err.code,
+      cacheStats: upstreamCache.stats(),
+    });
+    throw err;
+  }
+};
+
+/**
  * @function toUpstreamProblem
  * Converts an axios error into a 504 (timeout) or 502 (any other upstream
  * failure) Problem carrying a Retry-After header.
@@ -194,6 +255,8 @@ module.exports = {
   CHEFS_API_BASE,
   assertAllowedUrl,
   buildFormUrl,
+  cachedGet,
+  upstreamCache,
   isValidFormId,
   UPSTREAM_TIMEOUT_MS,
   UPSTREAM_MAX_ATTEMPTS,

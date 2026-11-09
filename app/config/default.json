@@ -49,6 +49,10 @@
       "audience": "chefs-frontend-localhost-5300",
       "maxTokenAge": "300"
     },
+    "externalCache": {
+      "ttlMs": "30000",
+      "maxEntries": "50"
+    },
     "logLevel": "http",
     "port": "8080",
     "rateLimit": {

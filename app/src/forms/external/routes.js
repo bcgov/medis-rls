@@ -2,6 +2,7 @@ const routes = require('express').Router();
 const controller = require('./controller');
 const config = require('config');
 const upstream = require('./upstream');
+const log = require('../../components/log')(module.filename);
 
 routes.use('/submissions', (req, res, next) => {
   // eslint-disable-next-line no-empty
@@ -16,18 +17,21 @@ routes.use('/submissions', (req, res, next) => {
       }
       req.extFormApiKey = extFormApiKey;
       if (apikeyIncome === undefined || apikeyIncome === '' || !apikeyIncome) {
+        log.warn('External request rejected: no API key provided', { function: 'submissionsAuth', ip: req.ip, path: req.path });
         return res.status(401).json({ message: 'No API key provided' });
       }
       if (apikeyIncome === apikeyEnv) {
         next();
       } else {
+        log.warn('External request rejected: invalid API key', { function: 'submissionsAuth', ip: req.ip, path: req.path });
         return res.status(401).json({ message: 'Invalid API key' });
       }
     } else {
+      log.warn(`External request rejected: ${req.method} not accepted`, { function: 'submissionsAuth', ip: req.ip, path: req.path });
       return res.status(404).json({ message: 'Only GET request is accepted' });
     }
   } catch (err) {
-    console.error('Error in listFormSubmissions:', err);
+    log.error('Error in external submissions auth', { function: 'submissionsAuth', ip: req.ip, path: req.path, error: err.message });
     return res.status(500).json({ message: err.message });
   }
 });
