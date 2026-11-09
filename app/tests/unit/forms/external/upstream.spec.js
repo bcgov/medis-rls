@@ -135,3 +135,34 @@ describe('upstream URL hardening', () => {
     expect(client.get).not.toBeCalled();
   });
 });
+
+describe('upstream.cachedGet', () => {
+  const axios = require('axios');
+  const formId = '123e4567-e89b-12d3-a456-426614174000';
+
+  beforeEach(() => {
+    upstream.upstreamCache.clear();
+    jest.spyOn(axios, 'create').mockReturnValue({ get: jest.fn().mockResolvedValue({ data: [{ id: 1 }] }), interceptors: { request: { use: jest.fn() } } });
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('serves a repeat request from the cache with a single upstream call', async () => {
+    const params = { formId, secret: 's1', resource: 'submissions', query: { fields: 'a' } };
+
+    const first = await upstream.cachedGet(params);
+    const second = await upstream.cachedGet(params);
+
+    expect(first).toMatchObject({ data: [{ id: 1 }], cache: 'miss' });
+    expect(second).toMatchObject({ data: [{ id: 1 }], cache: 'hit' });
+    expect(axios.create).toBeCalledTimes(1);
+  });
+
+  it('does not serve data cached for one secret to a different secret', async () => {
+    const base = { formId, resource: 'submissions', query: {} };
+
+    await upstream.cachedGet({ ...base, secret: 'right' });
+    const other = await upstream.cachedGet({ ...base, secret: 'wrong' });
+
+    expect(other.cache).toBe('miss');
+  });
+});
