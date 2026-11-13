@@ -24,7 +24,8 @@ module.exports = {
     // Tracks how far processing got, so a failure says where it happened.
     let step = 'received';
     // Note: the name of the secret header is itself the webhook secret, so
-    // header names are never logged.
+    // header names are not logged on accepted requests. They are logged only
+    // when the secret header is missing (see below), to diagnose rejections.
     log.info('Webhook received', {
       ...meta,
       receivedAt: new Date(started).toISOString(),
@@ -103,7 +104,19 @@ module.exports = {
         }
         res.status(200).json({ message: 'webhook executed ok...' });
       } else {
-        log.warn('Webhook rejected: secret header missing', { ...meta, ip: req.ip, userAgent: req.get('user-agent') });
+        // TEMPORARY diagnostic: log incoming header names so a misconfigured CHEFS
+        // subscription can be diagnosed. Remove once the issue is resolved.
+        const configuredHeader = String(config.get('server.webhookSecret') || '');
+        const headerNames = Object.keys(req.headers || {});
+        log.warn('Webhook rejected: secret header missing', {
+          ...meta,
+          ip: req.ip,
+          userAgent: req.get('user-agent'),
+          headerNames,
+          configuredHeaderLength: configuredHeader.length,
+          configuredHeaderIsLowercase: configuredHeader === configuredHeader.toLowerCase(),
+          caseInsensitiveMatch: headerNames.some((h) => h.toLowerCase() === configuredHeader.toLowerCase()),
+        });
         res.status(400).json({ message: 'Bad request' });
       }
     } catch (error) {

@@ -63,6 +63,29 @@ describe('webhooks controller logging', () => {
     expect(log.warn).toBeCalledWith('Webhook rejected: secret header missing', expect.objectContaining({ formId: 'form-1' }));
   });
 
+  it('logs incoming header names when the secret header is missing', async () => {
+    const { res } = getMockRes();
+    await controller.webhooks(makeReq({ headers: { 'content-type': 'application/json', 'x-other': 'v' } }), res);
+
+    expect(log.warn).toBeCalledWith(
+      'Webhook rejected: secret header missing',
+      expect.objectContaining({
+        headerNames: ['content-type', 'x-other'],
+        configuredHeaderLength: SECRET_HEADER.length,
+        configuredHeaderIsLowercase: true,
+        caseInsensitiveMatch: false,
+      })
+    );
+  });
+
+  it('flags a header that matches the secret only by case', async () => {
+    const { res } = getMockRes();
+    await controller.webhooks(makeReq({ headers: { [SECRET_HEADER.toUpperCase()]: FORM_SECRET } }), res);
+
+    expect(res.status).toBeCalledWith(400);
+    expect(log.warn).toBeCalledWith('Webhook rejected: secret header missing', expect.objectContaining({ caseInsensitiveMatch: true }));
+  });
+
   it('returns once when the payload has no formId', async () => {
     const { res } = getMockRes();
     await controller.webhooks(makeReq({ body: { subscriptionEvent: 'eventSubmission' } }), res);
