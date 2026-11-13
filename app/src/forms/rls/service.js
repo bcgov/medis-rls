@@ -1,6 +1,7 @@
 // const Problem = require('api-problem');
 const { v4: uuidv4 } = require('uuid');
 const { FormRls } = require('../common/models');
+const log = require('../../components/log')(module.filename);
 
 const service = {
   list: async (formId) => {
@@ -65,7 +66,7 @@ const service = {
           }
         }
         for (const rls of data.rlsItems) {
-          console.log('rls', rls);
+          log.debug('Saving RLS item', { function: 'update', formId, rlsId: rls.id, field: rls.field, remoteFormId: rls.remoteFormId });
           if (rls.id) {
             const update = Object.assign(
               {},

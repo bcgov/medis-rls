@@ -1,4 +1,5 @@
 const compression = require('compression');
+const crypto = require('crypto');
 const config = require('config');
 const express = require('express');
 const path = require('path');
@@ -23,6 +24,13 @@ const state = {
 };
 let probeId;
 const app = express();
+
+// Give every request an id (honouring one set by a proxy) so all of its log lines can be correlated.
+app.use((req, res, next) => {
+  req.requestId = req.get('x-request-id') || crypto.randomUUID();
+  res.set('X-Request-Id', req.requestId);
+  next();
+});
 app.use(compression());
 app.use(express.json({ limit: config.get('server.bodyLimit') }));
 app.use(express.urlencoded({ extended: true }));

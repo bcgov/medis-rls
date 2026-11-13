@@ -1,6 +1,7 @@
 const DataConnection = require('../../db/dataConnection');
 const dataConnection = new DataConnection();
 const Problem = require('api-problem');
+const log = require('../../components/log')(module.filename);
 const { ref } = require('objection');
 const { v4: uuidv4 } = require('uuid');
 const { EmailTypes } = require('../common/constants');
@@ -703,11 +704,9 @@ const service = {
     };
 
     const { schema } = await service.readVersion(formVersionId);
-    console.log(
-      'schema',
-      schema.components.flatMap((c) => findFields(c))
-    );
-    return schema.components.flatMap((c) => findFields(c));
+    const schemaFields = schema.components.flatMap((c) => findFields(c));
+    log.debug('Read fields from form version schema', { function: 'readVersionFields', formVersionId, fieldCount: schemaFields.length });
+    return schemaFields;
   },
   listSubmissions: async (formVersionId, params) => {
     return FormSubmission.query().where('formVersionId', formVersionId).modify('filterCreatedBy', params.createdBy).modify('orderDescending');

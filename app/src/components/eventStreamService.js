@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 const { AckPolicy, JSONCodec } = require('nats');
 const Cryptr = require('cryptr');
 const falsey = require('falsey');
@@ -6,6 +5,8 @@ const config = require('config');
 const submissionService = require('../forms/submission/service');
 const formService = require('../forms/form/service');
 const { SubmissionMetadata, User } = require('../forms/common/models');
+const log = require('./log')(module.filename);
+const { describeShape } = require('./logSummary');
 
 /*
  command line pass in environment variables for:
@@ -51,34 +52,73 @@ const FILTER_SUBJECTS = ['PUBLIC.forms.>', 'PRIVATE.forms.>'];
 const MAX_MESSAGES = 2;
 const DURABLE_NAME = config.get('server.natsDurableName');
 const ENCRYPTION_KEY = config.get('server.natsEncryptionKey') || undefined;
+const POLL_INTERVAL_MS = 5000;
+const SUMMARY_INTERVAL_MS = 60 * 1000;
+
+const stats = { polls: 0, emptyPolls: 0, messages: 0, failedPolls: 0, startedAt: Date.now(), lastSummaryAt: Date.now() };
+
+/**
+ * Logs the outcome of a change applied in the background. The calls are not
+ * awaited by the consumer, so this is where their success or failure is seen.
+ */
+const track = (promise, description, meta) => {
+  Promise.resolve(promise).then(
+    () => log.info(`ESS ${description} applied`, meta),
+    (err) => log.error(`ESS ${description} failed: ${err?.message}`, { ...meta, error: err?.message })
+  );
+};
 
 const proccessRequest = async (m) => {
   // illustrate grabbing the sequence and timestamp from the nats message...
+  let meta = { seq: m?.seq, subject: m?.subject };
   try {
     const ts = new Date(m.info.timestampNanos / 1000000).toISOString();
-    // eslint-disable-next-line no-console
-    console.log(`msg seq: ${m.seq}, subject: ${m.subject}, timestamp: ${ts}, streamSequence: ${m.info.streamSequence}, deliverySequence: ${m.info.deliverySequence}`);
+    meta = {
+      seq: m.seq,
+      subject: m.subject,
+      streamSequence: m.info.streamSequence,
+      deliverySequence: m.info.deliverySequence,
+      redeliveryCount: m.info.redeliveryCount,
+      published: ts,
+      receivedAt: new Date().toISOString(),
+      bytes: m.data?.length,
+    };
     // illustrate (one way of) grabbing message content as json
     const jsonCodec = JSONCodec();
     const data = jsonCodec.decode(m.data);
+    // The envelope (event type and form metadata) is not encrypted. Only the payload data is.
+    log.info('ESS message received', {
+      ...meta,
+      eventType: data?.meta?.type,
+      envelopeMeta: data?.meta,
+      envelopeShape: describeShape(data, 1),
+      hasEncryptedData: Boolean(data?.payload?.data),
+    });
     try {
       if (data && data['error']) {
-        // eslint-disable-next-line no-console
-        console.error('Error while receiving the message occured. Code: ', data['error']['code'], ' Message: ', data['error']['message']);
+        log.error(`ESS message carries an error. Code: ${data['error']['code']} Message: ${data['error']['message']}`, { ...meta, errorCode: data['error']['code'] });
       } else if (data && data['payload'] && data['payload']['data'] && ENCRYPTION_KEY) {
         const cryptr = new Cryptr(ENCRYPTION_KEY);
         const decryptedData = cryptr.decrypt(data['payload']['data']);
         const jsonData = JSON.parse(decryptedData);
-        if (
-          data?.meta?.formMetadata?.rls_env === config.get('server.natsDurableName') &&
-          data?.meta?.formMetadata?.rls_form_name === 'ha_hierarchy' &&
-          data?.meta?.formMetadata?.rls_form_id
-        ) {
+        const formMetadata = data?.meta?.formMetadata;
+        const matches = {
+          envMatches: formMetadata?.rls_env === config.get('server.natsDurableName'),
+          isHaHierarchy: formMetadata?.rls_form_name === 'ha_hierarchy',
+          hasFormId: Boolean(formMetadata?.rls_form_id),
+        };
+        log.info('ESS message decrypted', {
+          ...meta,
+          eventType: data?.meta?.type,
+          formMetadata,
+          decryptedBytes: decryptedData.length,
+          decryptedShape: describeShape(jsonData, 3),
+          submissionId: jsonData?.id,
+          submissionDataFields: jsonData?.submission?.data ? Object.keys(jsonData.submission.data) : undefined,
+          matches,
+        });
+        if (matches.envMatches && matches.isHaHierarchy && matches.hasFormId) {
           // updating HA hierarchy form
-          // eslint-disable-next-line no-console
-          console.log(data?.meta?.formMetadata?.rls_env, ' ESS event meta: ', data?.meta);
-          // eslint-disable-next-line no-console
-          // console.log(jsonData);
           let query = User.query().modify('filterUsername', 'service_account', true);
           const serviceAccountUser = await query;
           if (serviceAccountUser && serviceAccountUser.length > 0) {
@@ -96,47 +136,57 @@ const proccessRequest = async (m) => {
             delete jsonData.createdAt;
             delete jsonData.updatedBy;
             delete jsonData.updatedAt;
+            const action = { ...meta, eventType: data?.meta?.type, formId: formMetadata.rls_form_id, healthAuthority: jsonData?.submission?.data?.healthAuthority };
             if (data?.meta?.type === 'updated' || data?.meta?.type === 'deleted') {
               query = SubmissionMetadata.query().whereRaw(
-                `"formId" = '${data?.meta?.formMetadata?.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${escapeSQLString(
+                `"formId" = '${formMetadata.rls_form_id}' and submission #>> '{data,healthAuthority}' = '${escapeSQLString(
                   jsonData?.submission?.data?.healthAuthority
                 )}' and deleted != true`
               );
               const internalSubmission = await query;
               if (internalSubmission && internalSubmission.length > 0) {
+                const target = { ...action, submissionId: internalSubmission[0]?.submissionId, matchingRecords: internalSubmission.length };
                 if (data?.meta?.type === 'deleted') {
-                  submissionService.delete(internalSubmission[0]?.submissionId, serviceAccountUser[0]);
+                  track(submissionService.delete(internalSubmission[0]?.submissionId, serviceAccountUser[0]), 'delete', target);
                 } else {
                   if (!jsonData.deleted) {
                     // remove delete prop to make actual submission update
                     delete jsonData.deleted;
                   }
-                  submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true);
+                  track(submissionService.update(internalSubmission[0]?.submissionId, jsonData, serviceAccountUser[0], null, null, true), 'update', target);
                 }
               } else {
-                // eslint-disable-next-line no-console
-                console.log('No corresponding FORM ID or HA record found');
+                log.warn('ESS no corresponding FORM ID or HA record found', action);
               }
             } else if (data?.meta?.type === 'created') {
-              const form = await formService.readForm(data?.meta?.formMetadata?.rls_form_id);
+              const form = await formService.readForm(formMetadata.rls_form_id);
               const formVersion = form.versions.filter((fv) => fv.published === true);
               if (formVersion && formVersion.length > 0) {
-                formService.createSubmission(formVersion[0].id, jsonData, serviceAccountUser[0]);
+                track(formService.createSubmission(formVersion[0].id, jsonData, serviceAccountUser[0]), 'create', { ...action, formVersionId: formVersion[0].id });
+              } else {
+                log.warn('ESS create skipped: form has no published version', action);
               }
+            } else {
+              log.info('ESS message ignored: event type is not handled', action);
             }
+          } else {
+            log.warn('ESS message skipped: service account user not found', meta);
           }
+        } else {
+          log.info('ESS message ignored: not an RLS hierarchy event for this environment', { ...meta, eventType: data?.meta?.type, formMetadata, matches });
         }
       } else {
-        // eslint-disable-next-line no-console
-        console.error('Error decrypting payload.data. Either message data or ENCRYPTION_KEY are empty');
+        log.error('Error decrypting payload.data. Either message data or ENCRYPTION_KEY are empty', {
+          ...meta,
+          hasPayloadData: Boolean(data?.payload?.data),
+          hasEncryptionKey: Boolean(ENCRYPTION_KEY),
+        });
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error decrypting payload.data', err);
+      log.error(`Error processing ESS message: ${err?.message}`, { ...meta, error: err?.message, stack: err?.stack });
     }
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(`Error printing message: ${e.message}`);
+    log.error(`Error reading ESS message: ${e.message}`, { ...meta, error: e.message });
   }
 };
 
@@ -149,7 +199,12 @@ const init = async () => {
     try {
       // no credentials provided.
       // anonymous connections have read access to the stream
-      console.log(`connect to nats server(s) ${servers} as ${config.get('server.natsUsername')}...`);
+      log.info(`ESS connecting to nats server(s) ${servers} as ${config.get('server.natsUsername')}`, {
+        servers,
+        websockets: WEBSOCKETS,
+        stream: STREAM_NAME,
+        durable: DURABLE_NAME,
+      });
       nc = await natsConnect({
         servers: servers,
         reconnectTimeWait: 10 * 1000, // 10s
@@ -157,43 +212,82 @@ const init = async () => {
         pass: config.get('server.natsPassword'),
       });
 
-      console.log('access jetstream...');
       js = nc.jetstream();
-      console.log('get jetstream manager...');
       jsm = await js.jetstreamManager();
       await jsm.consumers.add(STREAM_NAME, {
         ack_policy: AckPolicy.Explicit,
         durable_name: DURABLE_NAME,
       });
       consumer = await js.consumers.get(STREAM_NAME, DURABLE_NAME);
+      log.info('ESS connected and consumer ready', {
+        stream: STREAM_NAME,
+        durable: DURABLE_NAME,
+        filterSubjects: FILTER_SUBJECTS,
+        pollIntervalMs: POLL_INTERVAL_MS,
+        maxMessagesPerPoll: MAX_MESSAGES,
+      });
     } catch (e) {
-      console.error(e);
+      log.error(`ESS connection failed, exiting: ${e?.message}`, { servers, stream: STREAM_NAME, durable: DURABLE_NAME, error: e?.message });
       process.exit(0);
     }
   }
 };
 
 const pull = async () => {
-  console.log('ESS fetching new messages..');
-  let iter = await consumer.fetch({
+  const started = Date.now();
+  stats.polls++;
+  log.debug('ESS fetching new messages', { poll: stats.polls, polledAt: new Date(started).toISOString() });
+  let received = 0;
+  const iter = await consumer.fetch({
     filterSubjects: FILTER_SUBJECTS,
     max_messages: MAX_MESSAGES,
   });
   for await (const m of iter) {
+    received++;
     proccessRequest(m);
     m.ack();
   }
+  stats.messages += received;
+  if (received === 0) stats.emptyPolls++;
+  // An empty poll is only logged at debug, otherwise this would write a line every few seconds per replica.
+  const level = received > 0 ? 'info' : 'debug';
+  log.log(level, `ESS poll #${stats.polls} received ${received} message(s)`, {
+    poll: stats.polls,
+    received,
+    polledAt: new Date(started).toISOString(),
+    completedAt: new Date().toISOString(),
+    durationMs: Date.now() - started,
+  });
+};
+
+/** Logs one line summarizing the polling activity since the last summary. */
+const logSummary = () => {
+  if (Date.now() - stats.lastSummaryAt < SUMMARY_INTERVAL_MS) return;
+  log.info('ESS polling summary', {
+    ...stats,
+    startedAt: new Date(stats.startedAt).toISOString(),
+    lastSummaryAt: new Date(stats.lastSummaryAt).toISOString(),
+    summaryAt: new Date().toISOString(),
+    uptimeMs: Date.now() - stats.startedAt,
+    sinceLastSummaryMs: Date.now() - stats.lastSummaryAt,
+  });
+  stats.lastSummaryAt = Date.now();
 };
 
 const eventStream = async () => {
   await init();
-  await pull();
-  setTimeout(eventStream, 5000); // process a batch every 5 seconds
+  try {
+    await pull();
+  } catch (e) {
+    stats.failedPolls++;
+    log.error(`ESS poll failed: ${e?.message}`, { poll: stats.polls, error: e?.message });
+  }
+  logSummary();
+  setTimeout(eventStream, POLL_INTERVAL_MS); // process a batch every 5 seconds
 };
 
 const shutdown = async () => {
-  console.log('\nshutdown...');
-  console.log('drain connection...');
+  log.info('ESS shutdown: draining connection', { ...stats });
   await nc.drain();
   process.exit(0);
 };
@@ -203,7 +297,7 @@ process.on('SIGINT', shutdown);
 process.on('SIGUSR1', shutdown);
 process.on('SIGUSR2', shutdown);
 process.on('exit', () => {
-  console.log('exit.');
+  log.info('ESS exit.');
 });
 
 module.exports = eventStream;

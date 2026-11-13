@@ -1,6 +1,7 @@
 const { validate } = require('uuid');
 
 const emailService = require('../email/emailService');
+const log = require('../../components/log')(module.filename);
 const exportService = require('./exportService');
 const service = require('./service');
 const fileService = require('../file/service');
@@ -148,7 +149,7 @@ module.exports = {
       const response = await service.updateForm(req.params.formId, req.body, req.currentUser);
       res.status(200).json(response);
     } catch (error) {
-      console.error(error);
+      log.error(`updateForm failed: ${error?.message}`, { function: 'updateForm', formId: req.params.formId, requestId: req.requestId, error: error?.message });
       next(error);
     }
   },
