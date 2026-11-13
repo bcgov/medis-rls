@@ -26,7 +26,7 @@ const logRequest = (req, endpoint, extra = {}) =>
 module.exports = {
   listFormSubmissions: async (req, res, next) => {
     const started = Date.now();
-    req.requestId = crypto.randomUUID();
+    req.requestId = req.requestId || crypto.randomUUID();
     try {
       const remoteFormId = req.headers['x-chefs-form-formid'];
       const idpUserId = req.headers['x-chefs-user-userid'];
@@ -63,7 +63,7 @@ module.exports = {
   },
   listFormSubmissionsWithFields: async (req, res, next) => {
     const started = Date.now();
-    req.requestId = crypto.randomUUID();
+    req.requestId = req.requestId || crypto.randomUUID();
     try {
       const apikeyEnv = config.get('server.externalApiKey');
       let apikeyIncome = req.headers.apikey;

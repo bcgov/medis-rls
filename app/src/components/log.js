@@ -116,6 +116,8 @@ const httpLogger = logger({
     return {
       azp: (token && token.azp) || undefined,
       contentLength: res.get('content-length'),
+      requestContentLength: req.get('content-length'),
+      requestId: req.requestId,
       formId: (req.auth && req.auth.user) || undefined,
       httpVersion: req.httpVersion,
       ip: req.ip,
