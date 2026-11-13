@@ -54,8 +54,6 @@ const DURABLE_NAME = config.get('server.natsDurableName');
 const ENCRYPTION_KEY = config.get('server.natsEncryptionKey') || undefined;
 const POLL_INTERVAL_MS = 5000;
 const SUMMARY_INTERVAL_MS = 60 * 1000;
-// Opt in only: decrypted payloads can contain personal information.
-const LOG_PAYLOAD = config.has('server.natsLogPayload') && !falsey(config.get('server.natsLogPayload'));
 
 const stats = { polls: 0, emptyPolls: 0, messages: 0, failedPolls: 0, startedAt: Date.now(), lastSummaryAt: Date.now() };
 
@@ -119,8 +117,6 @@ const proccessRequest = async (m) => {
           submissionDataFields: jsonData?.submission?.data ? Object.keys(jsonData.submission.data) : undefined,
           matches,
         });
-        // Full content is only logged when explicitly enabled (NATS_LOG_PAYLOAD=true)
-        if (LOG_PAYLOAD) log.info('ESS message payload', { ...meta, payload: jsonData });
         if (matches.envMatches && matches.isHaHierarchy && matches.hasFormId) {
           // updating HA hierarchy form
           let query = User.query().modify('filterUsername', 'service_account', true);
@@ -229,7 +225,6 @@ const init = async () => {
         filterSubjects: FILTER_SUBJECTS,
         pollIntervalMs: POLL_INTERVAL_MS,
         maxMessagesPerPoll: MAX_MESSAGES,
-        payloadLogging: LOG_PAYLOAD,
       });
     } catch (e) {
       log.error(`ESS connection failed, exiting: ${e?.message}`, { servers, stream: STREAM_NAME, durable: DURABLE_NAME, error: e?.message });

@@ -65,8 +65,7 @@
     "natsEncryptionKey": "NATS_ENCRYPTION_KEY",
     "natsUsername": "NATS_USERNAME",
     "natsPassword": "NATS_PASSWORD",
-    "natsDurableName": "NATS_DURABLE_NAME",
-    "natsLogPayload": "NATS_LOG_PAYLOAD"
+    "natsDurableName": "NATS_DURABLE_NAME"
   },
   "serviceClient": {
     "commonServices": {
